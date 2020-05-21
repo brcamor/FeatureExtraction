@@ -56,6 +56,9 @@ public class FeatureExtraction {
 	private static String									DESCRIPTION						= "description";
 	private static String									IS_DEFAULT						= "isDefault";
 	private static String									SQL_FILE_NAME					= "sqlFileName";
+	private static String									SQL_FILE_NAME_F					= "sqlFileName_F";
+	private static String									SQL_FILE_NAME_A					= "sqlFileName_A";
+	private static String									SQL_FILE_NAME_C					= "sqlFileName_C";
 	private static String									ANALYSES						= "analyses";
 	private static String									PARAMETERS						= "parameters";
 	private static String									INCLUDED_COVARIATE_CONCEPT_IDS	= "includedCovariateConceptIds";
@@ -173,9 +176,9 @@ public class FeatureExtraction {
 			try {
 				InputStream inputStream;
 				if (packageFolder == null) // Use file in JAR
-					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
+					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
 				else
-					inputStream = new FileInputStream(packageFolder + "/sql/sql_server/" + sqlFileName);
+					inputStream = new FileInputStream(packageFolder + "/sql/spark_sql_foundry/" + sqlFileName);
 				BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 				StringBuilder sql = new StringBuilder();
 				String line;
@@ -197,7 +200,7 @@ public class FeatureExtraction {
 			if (packageFolder == null) // Use file in JAR
 				inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
 			else
-				inputStream = new FileInputStream(packageFolder + "/sql/sql_server/" + sqlFileName);
+				inputStream = new FileInputStream(packageFolder +  "/sql/spark_sql_foundry/" + sqlFileName);
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 			StringBuilder sql = new StringBuilder();
 			String line;
@@ -244,7 +247,15 @@ public class FeatureExtraction {
 						// prespecAnalysis.description = row.get(i);
 						else
 							prespecAnalysis.keyToValue.put(header.get(i), row.get(i));
-					nameToSql.put(prespecAnalysis.sqlFileName, null);
+					String[] tokens = prespecAnalysis.sqlFileName.split("\\.(?=[^\\.]+$)");
+
+					prespecAnalysis.sqlFileName_A = tokens[0] + "_A." + tokens[1];
+					prespecAnalysis.sqlFileName_C = tokens[0] + "_C." + tokens[1];
+					prespecAnalysis.sqlFileName_F = tokens[0] + "_F." + tokens[1];
+					nameToSql.put(prespecAnalysis.sqlFileName_A, null);
+					nameToSql.put(prespecAnalysis.sqlFileName_C, null);
+					nameToSql.put(prespecAnalysis.sqlFileName_F, null);
+
 					nameToPrespecAnalysis.put(prespecAnalysis.analysisName, prespecAnalysis);
 				}
 			}
@@ -350,6 +361,12 @@ public class FeatureExtraction {
 				jsonWriter.value(prespecAnalysis.analysisId);
 				jsonWriter.key(SQL_FILE_NAME);
 				jsonWriter.value(prespecAnalysis.sqlFileName);
+				jsonWriter.key(SQL_FILE_NAME_A);
+				jsonWriter.value(prespecAnalysis.sqlFileName_A);
+				jsonWriter.key(SQL_FILE_NAME_C);
+				jsonWriter.value(prespecAnalysis.sqlFileName_C);
+				jsonWriter.key(SQL_FILE_NAME_F);
+				jsonWriter.value(prespecAnalysis.sqlFileName_F);
 				
 				jsonWriter.key(PARAMETERS);
 				jsonWriter.object();
@@ -584,39 +601,65 @@ public class FeatureExtraction {
 	
 	private static String createConstructionSql(JSONObject jsonObject, Map<IdSet, String> idSetToName, boolean temporal, boolean aggregated, String cohortTable,
 			String rowIdField, int cohortDefinitionId, String cdmDatabaseSchema) {
-		StringBuilder sql = new StringBuilder();
+		StringBuilder sql_C = new StringBuilder();
+		StringBuilder sql_A = new StringBuilder();
 		
 		// Add descendants to ID sets if needed:
+		/*
 		for (Map.Entry<IdSet, String> entry : idSetToName.entrySet()) {
 			if (entry.getKey().addDescendants) {
 				String line = SqlRender.renderSql(ADD_DESCENDANTS_SQL, new String[] { "source_temp", "target_temp", "cdm_database_schema" },
 						new String[] { entry.getValue() + "_a", entry.getValue(), cdmDatabaseSchema });
-				sql.append(line);
+				sql_F.append(line);
 			}
 		}
+		*/
 		
 		// Prep stuff
-		sql.append(SqlRender.renderSql(createCovRefTableSql, new String[] { "temporal" }, new String[] { Boolean.toString(temporal) }));
-		sql.append("\n");
-		
+		//sql.append(SqlRender.renderSql(createCovRefTableSql, new String[] { "temporal" }, new String[] { Boolean.toString(temporal) }));
+		//sql.append("\n");
 		// Add analyses
 		int a = 1;
 		Iterator<Object> analysesIterator = jsonObject.getJSONArray(ANALYSES).iterator();
+
+		StringWriter stringWriter = new StringWriter();
+		JSONWriter jsonWriter = new JSONWriter(stringWriter);
+		jsonWriter.object();
+
+		String output_path = "/UNITE/Palantir/OMOP FeatureExtraction/safe_harbor";
+		sql_A.append("CREATE TABLE `" + output_path + "/analysisRef` AS\n");
+		sql_C.append("CREATE TABLE `" + output_path + "/covariateRef` AS\n");
+
 		while (analysesIterator.hasNext()) {
 			JSONObject analysis = (JSONObject) analysesIterator.next();
 			if (!filtered(analysis)) {
-				String covariateTable = "#cov_" + a++;
+				
+				// Separate SQL file is created for each analysis
+				StringBuilder sql_F = new StringBuilder();
+
+				String covariateTable = "cov_" + a++;
 				analysis.put("covariateTable", covariateTable);
-				String templateSql = nameToSql.get(analysis.get(SQL_FILE_NAME));
+
+				String templateSql_F = nameToSql.get(analysis.get(SQL_FILE_NAME_F));
+				String templateSql_C = nameToSql.get(analysis.get(SQL_FILE_NAME_C));
+				String templateSql_A = nameToSql.get(analysis.get(SQL_FILE_NAME_A));
+
 				JSONObject parameters = analysis.getJSONObject(PARAMETERS);
-				String[] keys = new String[parameters.length() + 10];
-				String[] values = new String[parameters.length() + 10];
+				String[] keys = new String[parameters.length() + 12];
+				String[] values = new String[parameters.length() + 12];
 				int i = 0;
 				for (String key : parameters.keySet()) {
 					keys[i] = StringUtilities.camelCaseToSnakeCase(key);
 					values[i] = parameters.get(key).toString();
 					i++;
 				}
+				// TODO: make the output path a variable parameter
+				keys[i] = "output_path";
+				values[i] =  output_path;
+				i++;
+				keys[i] = "vocab_path";
+				values[i] =  "/demo/OMOP CDM/OMOP Standardized Vocabularies";
+				i++;
 				keys[i] = "cohort_table";
 				values[i] = cohortTable;
 				i++;
@@ -646,17 +689,35 @@ public class FeatureExtraction {
 				i++;
 				keys[i] = "included_cov_table";
 				values[i] = analysis.getString("incCovs");
-				sql.append(SqlRender.renderSql(templateSql, keys, values));
-				if (templateSql.contains("CAST('N' AS VARCHAR(1)) AS is_binary"))
+				sql_F.append(SqlRender.renderSql(templateSql_F, keys, values));
+				sql_A.append(SqlRender.renderSql(templateSql_A, keys, values));
+				sql_C.append(SqlRender.renderSql(templateSql_C, keys, values));
+
+				if (sql_A.toString().contains("CAST('N' AS VARCHAR(1)) AS is_binary"))
 					analysis.put("isBinary", false);
-				else if (sql.toString().contains("CAST('Y' AS VARCHAR(1)) AS is_binary"))
+				else if (sql_A.toString().contains("CAST('Y' AS VARCHAR(1)) AS is_binary"))
 					analysis.put("isBinary", true);
 				else
 					throw new RuntimeException(
-							"Unable to determine if feature is binary or not: " + "" + analysis.get(SQL_FILE_NAME) + " For SQL: " + templateSql);
+							"Unable to determine if feature is binary or not: " + "" + analysis.get(SQL_FILE_NAME) + " For SQL: " + templateSql_A);
+
+				jsonWriter.key(covariateTable);
+				jsonWriter.value(sql_F.toString());
+
+				if (analysesIterator.hasNext()){
+					sql_A.append("\nUNION ALL\n");
+					sql_C.append("\nUNION ALL\n");
+				}
 			}
+
 		}
-		return sql.toString();
+		jsonWriter.key("analyticRef");
+		jsonWriter.value(sql_A.toString());
+		jsonWriter.key("covariateRef");
+		jsonWriter.value(sql_C.toString());
+		jsonWriter.endObject();
+
+		return stringWriter.toString();
 	}
 	
 	private static boolean filtered(JSONObject analysis) {
@@ -734,6 +795,10 @@ public class FeatureExtraction {
 		public String				analysisName;
 		public boolean				isDefault;
 		public String				sqlFileName;
+		public String				sqlFileName_A;
+		public String				sqlFileName_C;
+		public String				sqlFileName_F;
+		
 		// public String description;
 		public Map<String, String>	keyToValue	= new LinkedHashMap<String, String>();
 	}

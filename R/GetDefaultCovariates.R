@@ -62,17 +62,9 @@ getDbDefaultCovariateData <- function(connection,
   rJava::J("org.ohdsi.featureExtraction.FeatureExtraction")$init(system.file("", package = "FeatureExtraction"))
   json <- rJava::J("org.ohdsi.featureExtraction.FeatureExtraction")$createSql(settings, aggregated, cohortTable, rowIdField, as.integer(cohortId), cdmDatabaseSchema)
   todo <- .fromJson(json)
+  
   if (length(todo$tempTables) != 0) {
     writeLines("Sending temp tables to server")
-    for (i in 1:length(todo$tempTables)) {
-      DatabaseConnector::insertTable(connection,
-                                     tableName = names(todo$tempTables)[i],
-                                     data = as.data.frame(todo$tempTables[[i]]),
-                                     dropTableIfExists = TRUE,
-                                     createTable = TRUE,
-                                     tempTable = TRUE,
-                                     oracleTempSchema = oracleTempSchema)
-    }
   }
   
   writeLines("Constructing features on server")
@@ -81,7 +73,8 @@ getDbDefaultCovariateData <- function(connection,
                               targetDialect = attr(connection, "dbms"),
                               oracleTempSchema = oracleTempSchema)
   profile <- (!is.null(getOption("dbProfile")) && getOption("dbProfile") == TRUE)
-  DatabaseConnector::executeSql(connection, sql, profile = profile)
+  print(sql)
+  #DatabaseConnector::executeSql(connection, sql, profile = profile)
   
   if (missing(targetCovariateTable) || is.null(targetCovariateTable)) {
     writeLines("Fetching data from server")
@@ -91,123 +84,39 @@ getDbDefaultCovariateData <- function(connection,
       sql <- SqlRender::translate(sql = todo$sqlQueryFeatures,
                                   targetDialect = attr(connection, "dbms"),
                                   oracleTempSchema = oracleTempSchema)
-      covariates <- DatabaseConnector::querySql.ffdf(connection, sql)
-      if (nrow(covariates) == 0) {
-        covariates <- NULL
-      } else {
-        colnames(covariates) <- SqlRender::snakeCaseToCamelCase(colnames(covariates))
-      }
-    } else {
-      covariates <- NULL
+      print(sql)
+#      covariates <- DatabaseConnector::querySql.ffdf(connection, sql)
     }
-    
+
     # Continuous aggregated features
     if (!is.null(todo$sqlQueryContinuousFeatures)) {
       sql <- SqlRender::translate(sql = todo$sqlQueryContinuousFeatures,
                                   targetDialect = attr(connection, "dbms"),
                                   oracleTempSchema = oracleTempSchema)
-      covariatesContinuous <- DatabaseConnector::querySql.ffdf(connection, sql)
-      if (nrow(covariatesContinuous) == 0) {
-        covariatesContinuous <- NULL
-      } else {
-        colnames(covariatesContinuous) <- SqlRender::snakeCaseToCamelCase(colnames(covariatesContinuous))
-      }
-    } else {
-      covariatesContinuous <- NULL
+      print(sql)
     }
     
     # Covariate reference
     sql <- SqlRender::translate(sql = todo$sqlQueryFeatureRef,
                                 targetDialect = attr(connection, "dbms"),
                                 oracleTempSchema = oracleTempSchema)
-    covariateRef <- DatabaseConnector::querySql.ffdf(connection, sql)
-    colnames(covariateRef) <- SqlRender::snakeCaseToCamelCase(colnames(covariateRef))
-    
+    print(sql)   
+
     # Analysis reference
     sql <- SqlRender::translate(sql = todo$sqlQueryAnalysisRef,
                                 targetDialect = attr(connection, "dbms"),
                                 oracleTempSchema = oracleTempSchema)
-    analysisRef <- DatabaseConnector::querySql.ffdf(connection, sql)
-    colnames(analysisRef) <- SqlRender::snakeCaseToCamelCase(colnames(analysisRef))
-    
+    print(sql)
+
     delta <- Sys.time() - start
     writeLines(paste("Fetching data took", signif(delta, 3), attr(delta, "units")))
-  } else {
-    # Don't fetch to R , but create on server instead
-    writeLines("Writing data to table")
-    start <- Sys.time()
-    convertQuery <- function(sql, databaseSchema, table) {
-      if (missing(databaseSchema) || is.null(databaseSchema)) {
-        tableName <- table
-      } else {
-        tableName <- paste(databaseSchema, table, sep = ".")
-      }
-      return(sub("FROM", paste("INTO", tableName, "FROM"), sql))
-    }
-    
-    # Covariates
-    if (!is.null(todo$sqlQueryFeatures)) {
-      sql <- convertQuery(todo$sqlQueryFeatures, targetDatabaseSchema, targetCovariateTable)
-      sql <- SqlRender::translate(sql = sql,
-                                  targetDialect = attr(connection, "dbms"),
-                                  oracleTempSchema = oracleTempSchema)
-      DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
-    }
-    
-    # Covariate reference
-    if (!missing(targetCovariateRefTable) && !is.null(targetCovariateRefTable)){
-      sql <- convertQuery(todo$sqlQueryFeatureRef, targetDatabaseSchema, targetCovariateRefTable)
-      sql <- SqlRender::translate(sql = sql,
-                                  targetDialect = attr(connection, "dbms"),
-                                  oracleTempSchema = oracleTempSchema)
-      DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
-    }
-    
-    # Analysis reference
-    if (!missing(targetAnalysisRefTable) && !is.null(targetAnalysisRefTable)){
-      sql <- convertQuery(todo$sqlQueryAnalysisRef, targetDatabaseSchema, targetAnalysisRefTable)
-      sql <- SqlRender::translate(sql = sql,
-                                  targetDialect = attr(connection, "dbms"),
-                                  oracleTempSchema = oracleTempSchema)
-      DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
-    }
-    delta <- Sys.time() - start
-    writeLines(paste("Writing data took", signif(delta, 3), attr(delta, "units")))
-    
   }
+
   # Drop temp tables
   sql <- SqlRender::translate(sql = todo$sqlCleanup,
                               targetDialect = attr(connection, "dbms"),
                               oracleTempSchema = oracleTempSchema)
+  print(sql)
   DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
-  if (length(todo$tempTables) != 0) {
-    for (i in 1:length(todo$tempTables)) {
-      sql <- "TRUNCATE TABLE @table;\nDROP TABLE @table;\n"
-      sql <- SqlRender::render(sql, table = names(todo$tempTables)[i])
-      sql <- SqlRender::translate(sql = sql,
-                                  targetDialect = attr(connection, "dbms"),
-                                  oracleTempSchema = oracleTempSchema)
-      DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
-    }
-  }
   
-  if (missing(targetCovariateTable) || is.null(targetCovariateTable)) {
-    covariateData <- list(covariates = covariates,
-                          covariatesContinuous = covariatesContinuous,
-                          covariateRef = covariateRef,
-                          analysisRef = analysisRef,
-                          metaData = list())
-    if (is.null(covariateData$covariates) && is.null(covariateData$covariatesContinuous)) {
-      warning("No data found")
-    } else {
-      if (!is.null(covariateData$covariates)) {
-        open(covariateData$covariates)
-      }
-      if (!is.null(covariateData$covariatesContinuous)) {
-        open(covariateData$covariatesContinuous)
-      }
-    }
-    class(covariateData) <- "covariateData"
-    return(covariateData)
-  }
 }

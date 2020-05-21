@@ -626,7 +626,7 @@ public class FeatureExtraction {
 		JSONWriter jsonWriter = new JSONWriter(stringWriter);
 		jsonWriter.object();
 
-		String output_path = "/UNITE/Palantir/OMOP FeatureExtraction/safe_harbor";
+		String output_path = "/demo/OMOP CDM/Analysis";
 		sql_A.append("CREATE TABLE `" + output_path + "/analysisRef` AS\n");
 		sql_C.append("CREATE TABLE `" + output_path + "/covariateRef` AS\n");
 

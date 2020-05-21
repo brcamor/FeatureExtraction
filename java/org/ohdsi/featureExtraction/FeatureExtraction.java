@@ -630,6 +630,8 @@ public class FeatureExtraction {
 		sql_A.append("CREATE TABLE `" + output_path + "/analysisRef` AS\n");
 		sql_C.append("CREATE TABLE `" + output_path + "/covariateRef` AS\n");
 
+		System.out.println("hello!");
+
 		while (analysesIterator.hasNext()) {
 			JSONObject analysis = (JSONObject) analysesIterator.next();
 			if (!filtered(analysis)) {

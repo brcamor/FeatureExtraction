@@ -1,9 +1,10 @@
 CREATE TABLE `@output_path/@covariate_table` AS
 {@aggregated} ? {
+WITH dem_age_data AS (
 SELECT subject_id,
 	cohort_start_date,
 	age
-INTO #dem_age_data
+
 } : {
 SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 {@temporal} ? {
@@ -15,7 +16,7 @@ SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 FROM (
 	SELECT 
 {@aggregated} ? {
-		subject_id,
+		@row_id_field,
 		cohort_start_date,	
 } : {
 		cohort.@row_id_field AS row_id,	
@@ -28,43 +29,49 @@ FROM (
 	) raw_data
 
 {@aggregated} ? {
-WITH t1 AS (
+),
+
+t1 AS (
 	SELECT COUNT(*) AS cnt 
-	FROM @cohort_table 
+	FROM `@cohort_table`
 {@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
-	),
+),
 t2 AS (
 	SELECT COUNT(*) AS cnt, 
 		MIN(age) AS min_age, 
 		MAX(age) AS max_age, 
 		SUM(CAST(age AS BIGINT)) AS sum_age, 
 		SUM(CAST(age AS BIGINT) * CAST(age AS BIGINT)) AS squared_age 
-	FROM #dem_age_data
-	)
-SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_age ELSE 0 END AS min_value,
+	FROM dem_age_data
+),
+dem_age_stats AS (
+	SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_age ELSE 0 END AS min_value,
 	t2.max_age AS max_value,
 	CAST(t2.sum_age / (1.0 * t1.cnt) AS FLOAT) AS average_value,
 	CAST(CASE WHEN t2.cnt = 1 THEN 0 ELSE SQRT((1.0 * t2.cnt*t2.squared_age - 1.0 * t2.sum_age*t2.sum_age) / (1.0 * t2.cnt*(1.0 * t2.cnt - 1))) END AS FLOAT) AS standard_deviation,
 	t2.cnt AS count_value,
 	t1.cnt - t2.cnt AS count_no_value,
 	t1.cnt AS population_size
-INTO #dem_age_stats
-FROM t1, t2;
+	FROM t1, t2	
+),
 
-SELECT age,
+dem_age_prep AS (
+SELECT 
+	age,
 	COUNT(*) AS total,
 	ROW_NUMBER() OVER (ORDER BY age) AS rn
-INTO #dem_age_prep
-FROM #dem_age_data
-GROUP BY age;
-	
-SELECT s.age,
+FROM dem_age_data
+GROUP BY age
+),
+
+dem_age_prep2 AS (
+	SELECT s.age,
 	SUM(p.total) AS accumulated
-INTO #dem_age_prep2	
-FROM #dem_age_prep s
-INNER JOIN #dem_age_prep p
+FROM dem_age_prep s
+INNER JOIN dem_age_prep p
 	ON p.rn <= s.rn
-GROUP BY s.age;
+GROUP BY s.age
+),
 
 SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 {@temporal} ? {
@@ -95,9 +102,8 @@ SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 		WHEN .90 * o.population_size < count_no_value THEN 0
 		ELSE MIN(CASE WHEN p.accumulated + count_no_value >= .90 * o.population_size THEN age	END) 
 		END AS p90_value		
-INTO @covariate_table
-FROM #dem_age_prep2 p
-CROSS JOIN #dem_age_stats o
+FROM dem_age_prep2 p
+CROSS JOIN dem_age_stats o
 {@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
 GROUP BY o.count_value,
 	o.count_no_value,
@@ -105,6 +111,6 @@ GROUP BY o.count_value,
 	o.max_value,
 	o.average_value,
 	o.standard_deviation,
-	o.population_size;
+	o.population_size
 
 } 

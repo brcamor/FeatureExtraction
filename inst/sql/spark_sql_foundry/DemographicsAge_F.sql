@@ -71,7 +71,7 @@ FROM dem_age_prep s
 INNER JOIN dem_age_prep p
 	ON p.rn <= s.rn
 GROUP BY s.age
-),
+)
 
 SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 {@temporal} ? {

@@ -86,7 +86,8 @@ public class FeatureExtractionFoundry {
 		// System.out.println(getDefaultPrespecTemporalAnalyses());
 		// System.out.println(convertSettingsPrespecToDetails(getDefaultPrespecTemporalAnalyses()));
 		// System.out.println(convertSettingsPrespecToDetails(getDefaultPrespecAnalyses()));
-		String settings = "{\"temporal\":false,\"analyses\":[{\"analysisId\":301,\"sqlFileName\":\"DomainConcept.sql\",\"parameters\":{\"analysisId\":301,\"startDay\":-365,\"endDay\":0,\"inpatient\":\"\",\"domainTable\":\"drug_exposure\",\"domainConceptId\":\"drug_concept_id\",\"domainStartDate\":\"drug_exposure_start_date\",\"domainEndDate\":\"drug_exposure_start_date\"},\"addDescendantsToExclude\":true,\"includedCovariateConceptIds\":[1,2,21600537410],\"excludedCovariateConceptIds\":{},\"addDescendantsToInclude\":true,\"includedCovariateIds\":12301}]}";
+		//String settings = "{\"temporal\":false,\"analyses\":[{\"analysisId\":301,\"sqlFileName\":\"DomainConcept.sql\",\"parameters\":{\"analysisId\":301,\"startDay\":-365,\"endDay\":0,\"inpatient\":\"\",\"domainTable\":\"drug_exposure\",\"domainConceptId\":\"drug_concept_id\",\"domainStartDate\":\"drug_exposure_start_date\",\"domainEndDate\":\"drug_exposure_start_date\"},\"addDescendantsToExclude\":true,\"includedCovariateConceptIds\":[1,2,21600537410],\"excludedCovariateConceptIds\":{},\"addDescendantsToInclude\":true,\"includedCovariateIds\":12301}]}";
+		String settings = "{\"temporal\":false,\"DemographicsGender\":true,\"DemographicsAgeGroup\":true,\"ConditionGroupEraLongTerm\":true,\"ConditionGroupEraShortTerm\":true,\"DrugGroupEraLongTerm\":true,\"DrugGroupEraShortTerm\":true,\"longTermStartDays\":-365,\"mediumTermStartDays\":-180,\"shortTermStartDays\":-30,\"endDays\":-1,\"includedCovariateConceptIds\":[],\"addDescendantsToInclude\":false,\"excludedCovariateConceptIds\":[],\"addDescendantsToExclude\":false,\"includedCovariateIds\":[]}";
 		// String settings = convertSettingsPrespecToDetails(getDefaultPrespecAnalyses());
 		System.out.println(createSql(settings, true, "#temp_cohort", "vocab_path", "output_path", "row_id", -1, "cdm_synpuf"));
 		
@@ -132,11 +133,10 @@ public class FeatureExtractionFoundry {
 		typeToNameToOtherParameters = new HashMap<String, Map<String, OtherParameter>>();
 		try {
 			InputStream inputStream;
-			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook") {// Use CSV file in JAR
-				System.out.println("Loading other parameters correctly");
+			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook")// Use CSV file in JAR
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/csv/OtherParameters.csv");
-			}
-			else	
+
+			else
 				inputStream = new FileInputStream(packageFolder + "/csv/OtherParameters.csv");
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 			
@@ -166,8 +166,6 @@ public class FeatureExtractionFoundry {
 					otherParameterNames.add(otherParameter.name);
 				}
 			}
-			System.out.println("In loadOtherParameters");
-			System.out.println(otherParameterNames);
 		} catch (UnsupportedEncodingException e) {
 			System.err.println("Computer does not support UTF-8 encoding");
 			e.printStackTrace();
@@ -181,18 +179,13 @@ public class FeatureExtractionFoundry {
 		nameToSql = new HashMap<String, String>();
 		for (String sqlFileName : sqlFileNames) {
 			try {
-				System.out.println("Package folder: " + packageFolder);
-				System.out.println("SQL  file: " + sqlFileName);
 				InputStream inputStream;
 				if (packageFolder == null) // Use files in JAR
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
 				else if (packageFolder == "transforms")
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
-				else if (packageFolder == "workbook") {
-					System.out.println("In workbook");
-					System.out.println("/inst/sql/spark_sql_vector/" + sqlFileName);
+				else if (packageFolder == "workbook")
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
-				}
 				else
 					inputStream = new FileInputStream(packageFolder + "/sql/spark_sql_foundry/" + sqlFileName);
 				BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
@@ -221,7 +214,6 @@ public class FeatureExtractionFoundry {
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
 			else
 				inputStream = new FileInputStream(packageFolder +  "/sql/sql_server/" + sqlFileName);
-			System.out.println(sqlFileName);
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 			StringBuilder sql = new StringBuilder();
 			String line;

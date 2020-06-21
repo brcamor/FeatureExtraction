@@ -1,6 +1,6 @@
 --Hospital Frailty Risk Score (HFRS)
 --Reference: Gilbert et al. “Development and Validation of a Hospital Frailty Risk Score Focusing on Older People in Acute Care Settings Using Electronic Hospital Records: An Observational Study.” The Lancet 391, no. 10132 (May 5, 2018): 1775–82. https://doi.org/10.1016/S0140-6736(18)30668-8.
-WITH @covariate_table AS (
+@covariate_table AS (
 	WITH hfrs_scoring AS (
 		SELECT CAST('Dementia in Alzheimers disease' AS VARCHAR(255)) AS hfrs_category,
 			CAST(source_code AS VARCHAR(255)) AS hfrs_icd10_code,

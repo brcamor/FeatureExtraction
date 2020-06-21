@@ -1,4 +1,4 @@
-WITH @covariate_table AS (
+@covariate_table AS (
 
 	WITH groups AS (
 		{@domain_table == 'drug_exposure' | @domain_table == 'drug_era'} ? {

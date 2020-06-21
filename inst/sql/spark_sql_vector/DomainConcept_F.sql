@@ -1,4 +1,4 @@
-WITH @covariate_table AS (
+@covariate_table AS (
 	SELECT 
 		CAST(@domain_concept_id AS BIGINT) * 1000 + @analysis_id AS covariate_id,
 	{@temporal} ? {

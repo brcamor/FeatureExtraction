@@ -133,7 +133,7 @@ public class FeatureExtractionFoundry {
 		typeToNameToOtherParameters = new HashMap<String, Map<String, OtherParameter>>();
 		try {
 			InputStream inputStream;
-			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook") {// Use CSV file in JAR
+			if (packageFolder == null || packageFolder.equals("transforms") || packageFolder.equals("workbook")) {// Use CSV file in JAR
 				System.out.println("in Jar loading");
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/csv/OtherParameters.csv");
 			}
@@ -183,9 +183,9 @@ public class FeatureExtractionFoundry {
 				InputStream inputStream;
 				if (packageFolder == null) // Use files in JAR
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
-				else if (packageFolder == "transforms")
+				else if (packageFolder.equals("transforms"))
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
-				else if (packageFolder == "workbook")
+				else if (packageFolder.equals("workbook"))
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
 				else
 					inputStream = new FileInputStream(packageFolder + "/sql/spark_sql_foundry/" + sqlFileName);
@@ -209,9 +209,9 @@ public class FeatureExtractionFoundry {
 			InputStream inputStream;
 			if (packageFolder == null) // Use file in JAR
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
-			else if (packageFolder == "transforms")
+			else if (packageFolder.equals("transforms"))
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
-			else if (packageFolder == "workbook")
+			else if (packageFolder.equals("workbook"))
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
 			else
 				inputStream = new FileInputStream(packageFolder +  "/sql/sql_server/" + sqlFileName);
@@ -234,7 +234,7 @@ public class FeatureExtractionFoundry {
 		LinkedHashMap<String, PrespecAnalysis> nameToPrespecAnalysis = new LinkedHashMap<String, PrespecAnalysis>();
 		try {
 			InputStream inputStream;
-			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook") // Use CSV file in JAR
+			if (packageFolder == null || packageFolder.equals("transforms") || packageFolder.equals("workbook")) // Use CSV file in JAR
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/csv/" + filename);
 			else
 				inputStream = new FileInputStream(packageFolder + "/csv/" + filename);

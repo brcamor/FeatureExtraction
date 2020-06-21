@@ -176,7 +176,11 @@ public class FeatureExtraction {
 			try {
 				InputStream inputStream;
 				if (packageFolder == null) // Use file in JAR
+					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
+				else if (packageFolder == "transforms")
 					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
+				else if (packageFolder == "workbook")
+					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
 				else
 					inputStream = new FileInputStream(packageFolder + "/sql/spark_sql_foundry/" + sqlFileName);
 				BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
@@ -198,7 +202,9 @@ public class FeatureExtraction {
 		try {
 			InputStream inputStream;
 			if (packageFolder == null) // Use file in JAR
-				inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
+				inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
+			else if (packageFolder == "transforms")
+			inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
 			else
 				inputStream = new FileInputStream(packageFolder +  "/sql/spark_sql_foundry/" + sqlFileName);
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));

@@ -61,7 +61,7 @@
             </configuration>
           </execution>
           <execution>
-            <id>copy-sql</id>
+            <id>copy-sql-foundry</id>
             <phase>validate</phase>
             <goals>
               <goal>copy-resources</goal>
@@ -71,6 +71,26 @@
               <resources>
                 <resource>
                   <directory>inst/sql/spark_sql_foundry</directory>
+                  <filtering>false</filtering>
+                  <includes>
+                    <include>**/*.sql</include>
+                    <include>**/*.py</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>copy-sql-vector</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}/inst/sql/spark_sql_vector</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>inst/sql/spark_sql_vector</directory>
                   <filtering>false</filtering>
                   <includes>
                     <include>**/*.sql</include>

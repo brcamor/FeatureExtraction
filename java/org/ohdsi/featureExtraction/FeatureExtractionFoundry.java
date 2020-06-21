@@ -77,7 +77,7 @@ public class FeatureExtractionFoundry {
 	public static void main(String[] args) {
 		//init("C:/Users/mschuemi/git/FeatureExtraction/inst");
 		// init("C:/R/R-3.3.1/library/FeatureExtraction");
-		init(null);
+		init("workbook");
 		// System.out.println(convertSettingsPrespecToDetails("{\"temporal\":false,\"DemographicsGender\":true,\"DemographicsAge\":true,\"longTermStartDays\":-365,\"mediumTermStartDays\":-180,\"shortTermStartDays\":-30,\"endDays\":0,\"includedCovariateConceptIds\":[],\"addDescendantsToInclude\":false,\"excludedCovariateConceptIds\":[1,2,3],\"addDescendantsToExclude\":false,\"includedCovariateIds\":[]}"));
 		// System.out.println(getDefaultPrespecAnalyses());
 		//
@@ -132,8 +132,10 @@ public class FeatureExtractionFoundry {
 		typeToNameToOtherParameters = new HashMap<String, Map<String, OtherParameter>>();
 		try {
 			InputStream inputStream;
-			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook") // Use CSV file in JAR
+			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook") {// Use CSV file in JAR
+				System.out.println("Loading other parameters correctly");
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/csv/OtherParameters.csv");
+			}
 			else	
 				inputStream = new FileInputStream(packageFolder + "/csv/OtherParameters.csv");
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
@@ -179,13 +181,18 @@ public class FeatureExtractionFoundry {
 		nameToSql = new HashMap<String, String>();
 		for (String sqlFileName : sqlFileNames) {
 			try {
+				System.out.println("Package folder: " + packageFolder);
+				System.out.println("SQL  file: " + sqlFileName);
 				InputStream inputStream;
 				if (packageFolder == null) // Use files in JAR
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
 				else if (packageFolder == "transforms")
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
-				else if (packageFolder == "workbook")
+				else if (packageFolder == "workbook") {
+					System.out.println("In workbook");
+					System.out.println("/inst/sql/spark_sql_vector/" + sqlFileName);
 					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
+				}
 				else
 					inputStream = new FileInputStream(packageFolder + "/sql/spark_sql_foundry/" + sqlFileName);
 				BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));

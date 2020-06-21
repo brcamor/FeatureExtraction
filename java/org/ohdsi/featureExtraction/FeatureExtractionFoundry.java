@@ -133,9 +133,10 @@ public class FeatureExtractionFoundry {
 		typeToNameToOtherParameters = new HashMap<String, Map<String, OtherParameter>>();
 		try {
 			InputStream inputStream;
-			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook")// Use CSV file in JAR
+			if (packageFolder == null || packageFolder == "transforms" || packageFolder == "workbook") {// Use CSV file in JAR
+				System.out.println("in Jar loading");
 				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/csv/OtherParameters.csv");
-
+			}
 			else
 				inputStream = new FileInputStream(packageFolder + "/csv/OtherParameters.csv");
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));

@@ -12,11 +12,11 @@ SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 }	
 	row_id,
 	age AS covariate_value
-}
+}	
 FROM (
 	SELECT 
 {@aggregated} ? {
-		@row_id_field,
+		cohort.subject_id,
 		cohort_start_date,	
 } : {
 		cohort.@row_id_field AS row_id,	
@@ -24,7 +24,7 @@ FROM (
 		YEAR(cohort_start_date) - year_of_birth AS age
 	FROM `@cohort_table` cohort
 	INNER JOIN `@cdm_database_schema/person` person
-		ON cohort.@row_id_field = person.person_id
+		ON cohort.subject_id = person.person_id
 {@cohort_definition_id != -1} ? {	WHERE cohort.cohort_definition_id = @cohort_definition_id}
 	) raw_data
 
@@ -52,7 +52,7 @@ dem_age_stats AS (
 	t2.cnt AS count_value,
 	t1.cnt - t2.cnt AS count_no_value,
 	t1.cnt AS population_size
-	FROM t1, t2	
+	FROM t1 CROSS JOIN t2	
 ),
 
 dem_age_prep AS (
@@ -104,7 +104,7 @@ SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 		END AS p90_value		
 FROM dem_age_prep2 p
 CROSS JOIN dem_age_stats o
-{@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
+{@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM `@output_path/@included_cov_table`)}
 GROUP BY o.count_value,
 	o.count_no_value,
 	o.min_value,

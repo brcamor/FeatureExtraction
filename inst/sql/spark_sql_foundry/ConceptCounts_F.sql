@@ -1,16 +1,16 @@
 CREATE TABLE `@output_path/@covariate_table` AS 
 
 {@aggregated} ? {
-SELECT subject_id,
+WITH concept_count_data AS (
+	SELECT 
+	subject_id,
 	cohort_start_date,
-{@temporal} ? {
-    time_id,
-}	
-{@sub_type == 'stratified'} ? {
-	covariate_id,
-}
-	concept_count
-INTO #concept_count_data
+	{@temporal} ? {
+		time_id,
+	}	
+	{@sub_type == 'stratified'} ? {
+		covariate_id,
+	} concept_count
 } : {
 {@sub_type == 'stratified'} ? {
 SELECT covariate_id,
@@ -32,7 +32,7 @@ FROM (
 		CAST(@domain_concept_id AS BIGINT) * 1000 + @analysis_id AS covariate_id,
 }
 {@aggregated} ? {
-		@row_id_field,
+		cohort.subject_id,
 		cohort_start_date,
 } : {
 		cohort.@row_id_field AS row_id,
@@ -44,7 +44,7 @@ FROM (
 }
 	FROM `@cohort_table` cohort
 	INNER JOIN `@cdm_database_schema/@domain_table` @domain_table
-		ON cohort.@row_id_field = @domain_table.person_id
+		ON cohort.subject_id = @domain_table.person_id
 {@temporal} ? {
 	INNER JOIN #time_period time_period
 		ON @domain_start_date <= date_add(cohort.cohort_start_date, time_period.end_day)
@@ -55,8 +55,8 @@ FROM (
 		AND @domain_end_date >= date_add(cohort.cohort_start_date, @start_day)
 		AND @domain_concept_id != 0
 }
-{@excluded_concept_table != ''} ? {		AND @domain_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
-{@included_concept_table != ''} ? {		AND @domain_concept_id IN (SELECT id FROM @included_concept_table)}
+{@excluded_concept_table != ''} ? {		AND @domain_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)}
+{@included_concept_table != ''} ? {		AND @domain_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)}
 {@cohort_definition_id != -1} ? {		AND cohort.cohort_definition_id = @cohort_definition_id}
 	GROUP BY 
 {@temporal} ? {
@@ -66,7 +66,7 @@ FROM (
 		@domain_concept_id,
 } 
 {@aggregated} ? {
-		@row_id_field,
+		cohort.subject_id,
 		cohort_start_date
 } : {
 
@@ -75,11 +75,12 @@ FROM (
 	) raw_data
 
 {@aggregated} ? {
-WITH t1 AS (
+), 
+t1 AS (
 	SELECT COUNT(*) AS cnt 
-	FROM @cohort_table 
+	FROM `@cohort_table`
 {@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
-	),
+),
 t2 AS (
 	SELECT COUNT(*) AS cnt, 
 {@sub_type == 'stratified'} ? {
@@ -89,12 +90,13 @@ t2 AS (
 		MAX(concept_count) AS max_concept_count, 
 		SUM(CAST(concept_count AS BIGINT)) AS sum_concept_count,
 		SUM(CAST(concept_count AS BIGINT) * CAST(concept_count AS BIGINT)) AS squared_concept_count
-	FROM #concept_count_data
+	FROM concept_count_data
 {@sub_type == 'stratified'} ? {
 	GROUP BY covariate_id
 } 
-	)
-SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_concept_count ELSE 0 END AS min_value,
+),
+concept_count_stats AS (
+	SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_concept_count ELSE 0 END AS min_value,
 	t2.max_concept_count AS max_value,
 {@sub_type == 'stratified'} ? {
 	covariate_id,
@@ -107,10 +109,10 @@ SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_concept_count ELSE 0 END AS min_val
 	t2.cnt AS count_value,
 	t1.cnt - t2.cnt AS count_no_value,
 	t1.cnt AS population_size
-INTO #concept_count_stats
-FROM t1, t2;
-
-SELECT concept_count,
+	FROM t1 CROSS JOIN t2
+),
+concept_count_prep AS (
+	SELECT concept_count,
 	COUNT(*) AS total,
 {@sub_type == 'stratified'} ? {
 	covariate_id,
@@ -118,31 +120,30 @@ SELECT concept_count,
 } : {
 	ROW_NUMBER() OVER (ORDER BY concept_count) AS rn
 }
-INTO #concept_count_prep
-FROM #concept_count_data
+FROM concept_count_data
 GROUP BY concept_count
 {@sub_type == 'stratified'} ? {
 	,covariate_id
 }
-;
-	
-SELECT s.concept_count,
-{@sub_type == 'stratified'} ? {
-	s.covariate_id,
-}
-	SUM(p.total) AS accumulated
-INTO #concept_count_prep2	
-FROM #concept_count_prep s
-INNER JOIN #concept_count_prep p
-	ON p.rn <= s.rn
-{@sub_type == 'stratified'} ? {
-	AND p.covariate_id= s.covariate_id
-}
-GROUP BY s.concept_count
-{@sub_type == 'stratified'} ? {
-	,s.covariate_id
-}
-;
+),
+concept_count_prep2 AS (
+	SELECT s.concept_count,
+	{@sub_type == 'stratified'} ? {
+		s.covariate_id,
+	}
+		SUM(p.total) AS accumulated
+	FROM concept_count_prep s
+	INNER JOIN concept_count_prep p
+		ON p.rn <= s.rn
+	{@sub_type == 'stratified'} ? {
+		AND p.covariate_id= s.covariate_id
+	}
+	GROUP BY s.concept_count
+	{@sub_type == 'stratified'} ? {
+		,s.covariate_id
+	}
+)
+
 
 {@sub_type == 'stratified'} ? {
 SELECT o.covariate_id,
@@ -177,15 +178,14 @@ SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 		WHEN .90 * o.population_size < count_no_value THEN 0
 		ELSE MIN(CASE WHEN p.accumulated + count_no_value >= .90 * o.population_size THEN concept_count	END) 
 		END AS p90_value		
-INTO @covariate_table
-FROM #concept_count_prep2 p
+	FROM concept_count_prep2 p
 {@sub_type == 'stratified'} ? {
-INNER JOIN #concept_count_stats o
+INNER JOIN concept_count_stats o
 ON p.covariate_id = o.covariate_id
-{@included_cov_table != ''} ? {WHERE covariate_id IN (SELECT id FROM @included_cov_table)}
+{@included_cov_table != ''} ? {WHERE covariate_id IN (SELECT id FROM `@output_path/@included_cov_table`)}
 } : {
-CROSS JOIN #concept_count_stats o
-{@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
+CROSS JOIN concept_count_stats o
+{@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM `@output_path/@included_cov_table`)}
 }
 GROUP BY o.count_value,
 	o.count_no_value,

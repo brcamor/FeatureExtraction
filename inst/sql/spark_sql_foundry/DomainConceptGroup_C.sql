@@ -15,4 +15,4 @@ FROM (
 	FROM `@output_path/@covariate_table`
 	) t1
 LEFT JOIN `@vocab_path/concept`
-	ON concept_id = CAST((covariate_id - @analysis_id) / 1000 AS INT);
+	ON concept_id = CAST((covariate_id - @analysis_id) / 1000 AS INT)

@@ -58,7 +58,7 @@
 			<artifactId>SqlRender</artifactId>
 			<version>1.5.3-SNAPSHOT</version>
 		</dependency>
-	</dependencies>
+ </dependencies>
 	<build>
 		<!-- sourceDirectory does not follow maven project directory structure -->
 		<sourceDirectory>${src.dir}</sourceDirectory>
@@ -75,6 +75,23 @@
 				for m2e support) -->
 		</resources>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.2.4</version>
+				<executions>
+				  <execution>
+					<phase>package</phase>
+					<goals>
+					  <goal>shade</goal>
+					</goals>
+					<configuration>
+					  <artifactSet>
+					  </artifactSet>
+					</configuration>
+				  </execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<artifactId>maven-resources-plugin</artifactId>
 				<version>2.7</version>
@@ -105,13 +122,14 @@
 							<goal>copy-resources</goal>
 						</goals>
 						<configuration>
-							<outputDirectory>${project.build.outputDirectory}/inst/sql/sql_server</outputDirectory>
+							<outputDirectory>${project.build.outputDirectory}/inst/sql/spark_sql_foundry</outputDirectory>
 							<resources>
 								<resource>
-									<directory>inst/sql/sql_server</directory>
+									<directory>inst/sql/spark_sql_foundry</directory>
 									<filtering>false</filtering>
 									<includes>
 										<include>**/*.sql</include>
+										<include>**/*.py</include>
 									</includes>
 								</resource>
 							</resources>

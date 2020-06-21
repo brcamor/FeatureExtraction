@@ -9,15 +9,15 @@ WITH groups AS (
 		INNER JOIN `@vocab_path/concept`
 			ON ancestor_concept_id = concept_id
 		WHERE ((vocabulary_id = 'ATC'
-				AND LEN(concept_code) IN (1, 3, 4, 5))
+				AND length(concept_code) IN (1, 3, 4, 5))
 			OR (standard_concept = 'S' 
 		{@domain_table == 'drug_era'} ? {		AND concept_class_id = 'Ingredient'}
 				AND domain_id = 'Drug'))
 			AND concept_id != 0
-		{@excluded_concept_table != ''} ? {	AND descendant_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
-		{@included_concept_table != ''} ? {	AND descendant_concept_id IN (SELECT id FROM @included_concept_table)}
-		{@excluded_concept_table != ''} ? {	AND ancestor_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
-		{@included_concept_table != ''} ? {	AND ancestor_concept_id IN (SELECT id FROM @included_concept_table)}
+		{@excluded_concept_table != ''} ? {	AND descendant_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)}
+		{@included_concept_table != ''} ? {	AND descendant_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)}
+		{@excluded_concept_table != ''} ? {	AND ancestor_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)}
+		{@included_concept_table != ''} ? {	AND ancestor_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)}
 	}
 
 	{@domain_table == 'condition_occurrence' | @domain_table == 'condition_era'} ? {
@@ -49,19 +49,19 @@ WITH groups AS (
 				AND concept_name NOT LIKE '%of anatomical site'
 				AND concept_name NOT LIKE '%of specific body structure%'
 				AND domain_id = 'Condition'
-		{@excluded_concept_table != ''} ? {		AND concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
-		{@included_concept_table != ''} ? {		AND concept_id IN (SELECT id FROM @included_concept_table)}
+		{@excluded_concept_table != ''} ? {		AND concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)}
+		{@included_concept_table != ''} ? {		AND concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)}
 		) valid_groups
 			ON ancestor_concept_id = valid_groups.concept_id
 		{@excluded_concept_table != '' | @included_concept_table != ''} ? {
 		WHERE 
 		{@excluded_concept_table != ''} ? {	
-			ancestor_concept_id NOT IN (SELECT id FROM @excluded_concept_table)
-			AND descendant_concept_id NOT IN (SELECT id FROM @excluded_concept_table)
+			ancestor_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)
+			AND descendant_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)
 		}
 		{@included_concept_table != ''} ? {
-		{@excluded_concept_table != ''} ? {	AND } : {	}ancestor_concept_id IN (SELECT id FROM @included_concept_table)
-			AND descendant_concept_id IN (SELECT id FROM @included_concept_table)
+		{@excluded_concept_table != ''} ? {	AND } : {	}ancestor_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)
+			AND descendant_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)
 		}
 		}
 	}
@@ -92,7 +92,7 @@ FROM (
 }	
 	FROM `@cohort_table` cohort
 	INNER JOIN `@cdm_database_schema/@domain_table` @domain_table
-		ON cohort.@row_id_field = @domain_table.person_id
+		ON cohort.subject_id = @domain_table.person_id
 	INNER JOIN groups
 		ON @domain_concept_id = descendant_concept_id
 {@temporal} ? {
@@ -106,7 +106,7 @@ FROM (
 		AND @domain_concept_id != 0
 }
 {@sub_type == 'inpatient'} ? {	AND condition_type_concept_id IN (38000183, 38000184, 38000199, 38000200)}
-{@included_cov_table != ''} ? {		AND CAST(ancestor_concept_id AS BIGINT) * 1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
+{@included_cov_table != ''} ? {		AND CAST(ancestor_concept_id AS BIGINT) * 1000 + @analysis_id IN (SELECT id FROM `@output_path/@included_cov_table`)}
 {@cohort_definition_id != -1} ? {		AND cohort.cohort_definition_id = @cohort_definition_id}
 ) temp
 {@aggregated} ? {		

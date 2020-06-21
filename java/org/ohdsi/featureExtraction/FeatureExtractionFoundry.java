@@ -40,13 +40,14 @@ import org.ohdsi.sql.SqlRender;
 /**
  * FeatureExtraction engine. Generates SQL for constructing and downloading features for cohorts of interest.
  */
-public class FeatureExtraction {
+public class FeatureExtractionFoundry {
 	
 	private static ReentrantLock							lock							= new ReentrantLock();
 	private static Map<String, PrespecAnalysis>				nameToPrespecAnalysis			= null;
 	private static Map<String, PrespecAnalysis>				nameToPrespecTemporalAnalysis	= null;
 	private static Map<String, String>						nameToSql						= null;
 	private static String									createCovRefTableSql			= null;
+	private static String									createConceptTablesPython		= null;
 	private static Map<String, Map<String, OtherParameter>>	typeToNameToOtherParameters		= null;
 	private static Set<String>								otherParameterNames				= null;
 	
@@ -74,9 +75,9 @@ public class FeatureExtraction {
 	private static String									ADD_DESCENDANTS_SQL				= "SELECT descendant_concept_id AS id\nINTO @target_temp\nFROM @cdm_database_schema.concept_ancestor\nINNER JOIN @source_temp\n\tON ancestor_concept_id = id;\n\n";
 	
 	public static void main(String[] args) {
-		init("C:/Users/mschuemi/git/FeatureExtraction/inst");
+		//init("C:/Users/mschuemi/git/FeatureExtraction/inst");
 		// init("C:/R/R-3.3.1/library/FeatureExtraction");
-		
+		init(null);
 		// System.out.println(convertSettingsPrespecToDetails("{\"temporal\":false,\"DemographicsGender\":true,\"DemographicsAge\":true,\"longTermStartDays\":-365,\"mediumTermStartDays\":-180,\"shortTermStartDays\":-30,\"endDays\":0,\"includedCovariateConceptIds\":[],\"addDescendantsToInclude\":false,\"excludedCovariateConceptIds\":[1,2,3],\"addDescendantsToExclude\":false,\"includedCovariateIds\":[]}"));
 		// System.out.println(getDefaultPrespecAnalyses());
 		//
@@ -87,7 +88,8 @@ public class FeatureExtraction {
 		// System.out.println(convertSettingsPrespecToDetails(getDefaultPrespecAnalyses()));
 		String settings = "{\"temporal\":false,\"analyses\":[{\"analysisId\":301,\"sqlFileName\":\"DomainConcept.sql\",\"parameters\":{\"analysisId\":301,\"startDay\":-365,\"endDay\":0,\"inpatient\":\"\",\"domainTable\":\"drug_exposure\",\"domainConceptId\":\"drug_concept_id\",\"domainStartDate\":\"drug_exposure_start_date\",\"domainEndDate\":\"drug_exposure_start_date\"},\"addDescendantsToExclude\":true,\"includedCovariateConceptIds\":[1,2,21600537410],\"excludedCovariateConceptIds\":{},\"addDescendantsToInclude\":true,\"includedCovariateIds\":12301}]}";
 		// String settings = convertSettingsPrespecToDetails(getDefaultPrespecAnalyses());
-		System.out.println(createSql(settings, true, "#temp_cohort", "row_id", -1, "cdm_synpuf"));
+		System.out.println(createSql(settings, true, "#temp_cohort", "vocab_path", "output_path", "row_id", -1, "cdm_synpuf"));
+		
 		// System.out.println(createSql(getDefaultPrespecAnalyses(), true, "#temp_cohort", "row_id", -1, "cdm_synpuf"));
 		// System.out.println(createSql(getDefaultPrespecTemporalAnalyses(), false, "#temp_cohort", "row_id", -1, "cdm_synpuf"));
 	}
@@ -112,6 +114,7 @@ public class FeatureExtraction {
 					nameToPrespecTemporalAnalysis = loadPrespecAnalysis(packageFolder, "PrespecTemporalAnalyses.csv");
 					loadTemplateSql(packageFolder);
 					createCovRefTableSql = loadSqlFile(packageFolder, "CreateCovAnalysisRefTables.sql");
+					createConceptTablesPython = loadSqlFile(packageFolder, "id_set_table.py");
 				}
 			} catch(Exception e) {
 				otherParameterNames = null;
@@ -129,9 +132,10 @@ public class FeatureExtraction {
 		typeToNameToOtherParameters = new HashMap<String, Map<String, OtherParameter>>();
 		try {
 			InputStream inputStream;
-			if (packageFolder == null) // Use CSV file in JAR
-				inputStream = FeatureExtraction.class.getResourceAsStream("/inst/csv/OtherParameters.csv");
-			else
+			if (packageFolder == null) { // Use CSV file in JAR
+				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/csv/OtherParameters.csv");
+				System.out.println("loading from jar");
+			} else
 				inputStream = new FileInputStream(packageFolder + "/csv/OtherParameters.csv");
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 			
@@ -154,13 +158,15 @@ public class FeatureExtraction {
 							otherParameter.defaultValue = new JSONObject("{value:" + row.get(i) + "}").get("value");
 					Map<String, OtherParameter> nameToOtherParameter = typeToNameToOtherParameters.get(otherParameter.type);
 					if (nameToOtherParameter == null) {
-						nameToOtherParameter = new HashMap<String, FeatureExtraction.OtherParameter>();
+						nameToOtherParameter = new HashMap<String, FeatureExtractionFoundry.OtherParameter>();
 						typeToNameToOtherParameters.put(otherParameter.type, nameToOtherParameter);
 					}
 					nameToOtherParameter.put(otherParameter.name, otherParameter);
 					otherParameterNames.add(otherParameter.name);
 				}
 			}
+			System.out.println("In loadOtherParameters");
+			System.out.println(otherParameterNames);
 		} catch (UnsupportedEncodingException e) {
 			System.err.println("Computer does not support UTF-8 encoding");
 			e.printStackTrace();
@@ -176,11 +182,11 @@ public class FeatureExtraction {
 			try {
 				InputStream inputStream;
 				if (packageFolder == null) // Use file in JAR
-					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
+					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
 				else if (packageFolder == "transforms")
-					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
+					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
 				else if (packageFolder == "workbook")
-					inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
+					inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
 				else
 					inputStream = new FileInputStream(packageFolder + "/sql/spark_sql_foundry/" + sqlFileName);
 				BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
@@ -202,11 +208,14 @@ public class FeatureExtraction {
 		try {
 			InputStream inputStream;
 			if (packageFolder == null) // Use file in JAR
-				inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
+				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/sql_server/" + sqlFileName);
 			else if (packageFolder == "transforms")
-			inputStream = FeatureExtraction.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
+				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_foundry/" + sqlFileName);
+			else if (packageFolder == "workbook")
+				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/sql/spark_sql_vector/" + sqlFileName);
 			else
-				inputStream = new FileInputStream(packageFolder +  "/sql/spark_sql_foundry/" + sqlFileName);
+				inputStream = new FileInputStream(packageFolder +  "/sql/sql_server/" + sqlFileName);
+			System.out.println(sqlFileName);
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 			StringBuilder sql = new StringBuilder();
 			String line;
@@ -227,7 +236,7 @@ public class FeatureExtraction {
 		try {
 			InputStream inputStream;
 			if (packageFolder == null) // Use CSV file in JAR
-				inputStream = FeatureExtraction.class.getResourceAsStream("/inst/csv/" + filename);
+				inputStream = FeatureExtractionFoundry.class.getResourceAsStream("/inst/csv/" + filename);
 			else
 				inputStream = new FileInputStream(packageFolder + "/csv/" + filename);
 			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
@@ -276,7 +285,7 @@ public class FeatureExtraction {
 
 	public static Map<String, PrespecAnalysis> getNameToPrespecAnalysis() {
 		if (nameToPrespecAnalysis == null) {
-			FeatureExtraction.init(null);
+			FeatureExtractionFoundry.init(null);
 		}
 		return nameToPrespecAnalysis;
 	}
@@ -435,7 +444,7 @@ public class FeatureExtraction {
 	 *            specify both the database and the schema, so for example 'cdm_instance.dbo'.
 	 * @return A JSON object.
 	 */
-	public static String createSql(String settings, boolean aggregated, String cohortTable, String rowIdField, int cohortDefinitionId,
+	public static String createSql(String settings, boolean aggregated, String cohortTable, String vocabPath, String outputPath, String rowIdField, int cohortDefinitionId,
 			String cdmDatabaseSchema) {
 		JSONObject jsonObject = new JSONObject(settings);
 		
@@ -456,10 +465,16 @@ public class FeatureExtraction {
 		jsonWriter.key("tempTables");
 		jsonWriter.object();
 		for (Map.Entry<IdSet, String> entry : idSetToName.entrySet()) {
-			jsonWriter.key(entry.getValue() + (entry.getKey().addDescendants ? "_a" : ""));
+			String name = new String(entry.getValue() + (entry.getKey().addDescendants ? "_a" : ""));
+			jsonWriter.key(name);
 			jsonWriter.object();
 			jsonWriter.key("id");
-			jsonWriter.value(entry.getKey().ids);
+			//jsonWriter.value(entry.getKey().ids);
+			jsonWriter.value(
+				SqlRender.renderSql(createConceptTablesPython, new String[] { "output_path", "name", "ids" },
+				new String[] { outputPath , name, 
+									entry.getKey().ids.toString()})
+			);
 			jsonWriter.endObject();
 		}
 		if (temporal) {
@@ -476,9 +491,9 @@ public class FeatureExtraction {
 		jsonWriter.endObject();
 		
 		jsonWriter.key("sqlConstruction");
-		jsonWriter.value(createConstructionSql(jsonObject, idSetToName, temporal, aggregated, cohortTable, rowIdField, cohortDefinitionId, cdmDatabaseSchema));
+		jsonWriter.value(createConstructionSql(jsonObject, idSetToName, temporal, aggregated, cohortTable, vocabPath, outputPath, rowIdField, cohortDefinitionId, cdmDatabaseSchema));
 		
-		String sqlQueryFeatures = createQuerySql(jsonObject, cohortTable, cohortDefinitionId, aggregated, temporal);
+		String sqlQueryFeatures = createQuerySql(jsonObject, cohortTable, outputPath, cohortDefinitionId, aggregated, temporal);
 		if (sqlQueryFeatures != null) {
 			jsonWriter.key("sqlQueryFeatures");
 			jsonWriter.value(sqlQueryFeatures);
@@ -539,7 +554,7 @@ public class FeatureExtraction {
 		return sql.toString();
 	}
 	
-	private static String createQuerySql(JSONObject jsonObject, String cohortTable, int cohortDefinitionId, boolean aggregated, boolean temporal) {
+	private static String createQuerySql(JSONObject jsonObject, String cohortTable, String outputPath, int cohortDefinitionId, boolean aggregated, boolean temporal) {
 		StringBuilder fields = new StringBuilder();
 		if (aggregated) {
 			fields.append("covariate_id, sum_value");
@@ -551,6 +566,7 @@ public class FeatureExtraction {
 		}
 		boolean hasFeature = false;
 		StringBuilder sql = new StringBuilder();
+		sql.append("CREATE TABLE `" + outputPath + "/covariate_all` AS\n");
 		if (aggregated) {
 			sql.append(
 					"SELECT all_covariates.covariate_id,\n  all_covariates.sum_value,\n  CAST(all_covariates.sum_value / (1.0 * total.total_count) AS FLOAT) AS average_value\nFROM (");
@@ -563,7 +579,7 @@ public class FeatureExtraction {
 			if (analysis.has("covariateTable") && (!aggregated || analysis.getBoolean("isBinary"))) {
 				if (hasFeature)
 					sql.append(" UNION ALL\n");
-				sql.append("SELECT " + fields.toString() + " FROM " + analysis.getString("covariateTable"));
+				sql.append("SELECT " + fields.toString() + " FROM `" + outputPath + "/" + analysis.getString("covariateTable") + '`');
 				hasFeature = true;
 			}
 		}
@@ -571,9 +587,9 @@ public class FeatureExtraction {
 			return null;
 		if (aggregated) {
 			sql.append(
-					"\n) all_covariates, (\nSELECT COUNT(*) AS total_count\nFROM @cohort_table {@cohort_definition_id != -1} ? {\nWHERE cohort_definition_id = @cohort_definition_id}\n) total;");
+					"\n) all_covariates, (\nSELECT COUNT(*) AS total_count\nFROM @cohort_table {@cohort_definition_id != -1} ? {\nWHERE cohort_definition_id = @cohort_definition_id}\n) total");
 		} else {
-			sql.append("\n) all_covariates;");
+			sql.append("\n) all_covariates");
 		}
 		return SqlRender.renderSql(sql.toString(), new String[] { "cohort_table", "cohort_definition_id" },
 				new String[] { cohortTable, Integer.toString(cohortDefinitionId) });
@@ -606,20 +622,18 @@ public class FeatureExtraction {
 	}
 	
 	private static String createConstructionSql(JSONObject jsonObject, Map<IdSet, String> idSetToName, boolean temporal, boolean aggregated, String cohortTable,
-			String rowIdField, int cohortDefinitionId, String cdmDatabaseSchema) {
+			String vocabPath, String outputPath, String rowIdField, int cohortDefinitionId, String cdmDatabaseSchema) {
 		StringBuilder sql_C = new StringBuilder();
 		StringBuilder sql_A = new StringBuilder();
-		
-		// Add descendants to ID sets if needed:
-		/*
+		StringBuilder sql_IncExc = new StringBuilder();
+			
 		for (Map.Entry<IdSet, String> entry : idSetToName.entrySet()) {
 			if (entry.getKey().addDescendants) {
 				String line = SqlRender.renderSql(ADD_DESCENDANTS_SQL, new String[] { "source_temp", "target_temp", "cdm_database_schema" },
 						new String[] { entry.getValue() + "_a", entry.getValue(), cdmDatabaseSchema });
-				sql_F.append(line);
+				sql_IncExc.append(line);
 			}
 		}
-		*/
 		
 		// Prep stuff
 		//sql.append(SqlRender.renderSql(createCovRefTableSql, new String[] { "temporal" }, new String[] { Boolean.toString(temporal) }));
@@ -632,11 +646,8 @@ public class FeatureExtraction {
 		JSONWriter jsonWriter = new JSONWriter(stringWriter);
 		jsonWriter.object();
 
-		String output_path = "/demo/OMOP CDM/Analysis";
-		sql_A.append("CREATE TABLE `" + output_path + "/analysisRef` AS\n");
-		sql_C.append("CREATE TABLE `" + output_path + "/covariateRef` AS\n");
-
-		System.out.println("hello!");
+		sql_A.append("CREATE TABLE `" + outputPath + "/analysisRef` AS\n");
+		sql_C.append("CREATE TABLE `" + outputPath + "/covariateRef` AS\n");
 
 		while (analysesIterator.hasNext()) {
 			JSONObject analysis = (JSONObject) analysesIterator.next();
@@ -661,12 +672,11 @@ public class FeatureExtraction {
 					values[i] = parameters.get(key).toString();
 					i++;
 				}
-				// TODO: make the output path a variable parameter
 				keys[i] = "output_path";
-				values[i] =  output_path;
+				values[i] =  outputPath;
 				i++;
 				keys[i] = "vocab_path";
-				values[i] =  "/demo/OMOP CDM/OMOP Standardized Vocabularies";
+				values[i] =  vocabPath;
 				i++;
 				keys[i] = "cohort_table";
 				values[i] = cohortTable;
@@ -723,6 +733,8 @@ public class FeatureExtraction {
 		jsonWriter.value(sql_A.toString());
 		jsonWriter.key("covariateRef");
 		jsonWriter.value(sql_C.toString());
+		jsonWriter.key("includeExclude");
+		jsonWriter.value(sql_IncExc.toString());
 		jsonWriter.endObject();
 
 		return stringWriter.toString();
@@ -743,7 +755,7 @@ public class FeatureExtraction {
 	
 	private static Map<IdSet, String> extractUniqueIdSets(JSONObject jsonObject) {
 		Iterator<Object> analysesIterator = jsonObject.getJSONArray(ANALYSES).iterator();
-		Map<IdSet, String> idSetToName = new HashMap<FeatureExtraction.IdSet, String>();
+		Map<IdSet, String> idSetToName = new HashMap<FeatureExtractionFoundry.IdSet, String>();
 		String name;
 		IdSet idSet;
 		while (analysesIterator.hasNext()) {
@@ -754,7 +766,7 @@ public class FeatureExtraction {
 			} else {
 				name = idSetToName.get(idSet);
 				if (name == null) {
-					name = "#id_set_" + (idSetToName.size() + 1);
+					name = "id_set_" + (idSetToName.size() + 1);
 					idSetToName.put(idSet, name);
 				}
 				analysis.put("incConcepts", name);
@@ -765,7 +777,7 @@ public class FeatureExtraction {
 			} else {
 				name = idSetToName.get(idSet);
 				if (name == null) {
-					name = "#id_set_" + (idSetToName.size() + 1);
+					name = "id_set_" + (idSetToName.size() + 1);
 					idSetToName.put(idSet, name);
 				}
 				analysis.put("excConcepts", name);
@@ -776,7 +788,7 @@ public class FeatureExtraction {
 			} else {
 				name = idSetToName.get(idSet);
 				if (name == null) {
-					name = "#id_set_" + (idSetToName.size() + 1);
+					name = "id_set_" + (idSetToName.size() + 1);
 					idSetToName.put(idSet, name);
 				}
 				analysis.put("incCovs", name);

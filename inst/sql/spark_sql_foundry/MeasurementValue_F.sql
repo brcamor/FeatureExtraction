@@ -5,9 +5,9 @@ WITH meas_cov AS (
   CAST((CAST(measurement_concept_id AS BIGINT) * 1000000) + ((unit_concept_id - (FLOOR(unit_concept_id / 1000) * 1000)) * 1000) + @analysis_id AS BIGINT) AS covariate_id
 FROM `@cdm_database_schema/measurement`
 WHERE value_as_number IS NOT NULL
-{@excluded_concept_table != ''} ? {		AND measurement_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
-{@included_concept_table != ''} ? {		AND measurement_concept_id IN (SELECT id FROM @included_concept_table)}
-{@included_cov_table != ''} ? {		AND CAST((CAST(measurement_concept_id AS BIGINT) * 1000000) + ((unit_concept_id - (FLOOR(unit_concept_id / 1000) * 1000)) * 1000) + @analysis_id AS BIGINT) IN (SELECT id FROM @included_cov_table)}
+{@excluded_concept_table != ''} ? {		AND measurement_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)}
+{@included_concept_table != ''} ? {		AND measurement_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)}
+{@included_cov_table != ''} ? {		AND CAST((CAST(measurement_concept_id AS BIGINT) * 1000000) + ((unit_concept_id - (FLOOR(unit_concept_id / 1000) * 1000)) * 1000) + @analysis_id AS BIGINT) IN (SELECT id FROM `@output_path/@included_cov_table`)}
 ),
 
 meas_val_data AS (
@@ -26,13 +26,13 @@ meas_val_data AS (
 	FROM (
 		SELECT 
 	{@aggregated} ? {
-			subject_id,
+			cohort.subject_id,
 			cohort_start_date,
 	{@temporal} ? {
 			time_id,
-			ROW_NUMBER() OVER (PARTITION BY subject_id, cohort_start_date, measurement.measurement_concept_id, time_id ORDER BY measurement_date DESC) AS rn,
+			ROW_NUMBER() OVER (PARTITION BY cohort.subject_id, cohort_start_date, measurement.measurement_concept_id, time_id ORDER BY measurement_date DESC) AS rn,
 	} : {
-			ROW_NUMBER() OVER (PARTITION BY subject_id, cohort_start_date, measurement.measurement_concept_id ORDER BY measurement_date DESC) AS rn,
+			ROW_NUMBER() OVER (PARTITION BY cohort.subject_id, cohort_start_date, measurement.measurement_concept_id ORDER BY measurement_date DESC) AS rn,
 	}
 	} : {
 			cohort.@row_id_field AS row_id,
@@ -47,7 +47,7 @@ meas_val_data AS (
 			value_as_number
 		FROM `@cohort_table` cohort
 		INNER JOIN `@cdm_database_schema/measurement` measurement
-			ON cohort.@row_id_field = measurement.person_id
+			ON cohort.subject_id = measurement.person_id
 		INNER JOIN meas_cov
 			ON meas_cov.measurement_concept_id = measurement.measurement_concept_id 
 				AND meas_cov.unit_concept_id = measurement.unit_concept_id 
@@ -69,54 +69,54 @@ meas_val_data AS (
 -- Feature construction
 
 {@aggregated} ? {
-SELECT covariate_id,
+, meas_val_stats AS (
+	SELECT covariate_id,
 {@temporal} ? {
 	time_id,
 }
 	MIN(value_as_number) AS min_value,
 	MAX(value_as_number) AS max_value,
 	CAST(AVG(value_as_number) AS FLOAT) AS average_value,
-	CAST(STDEV(value_as_number) AS FLOAT) AS standard_deviation,
+	CAST(stddev(value_as_number) AS FLOAT) AS standard_deviation,
 	COUNT(*) AS count_value
-INTO #meas_val_stats
-FROM #meas_val_data
+FROM meas_val_data
 GROUP BY covariate_id
 {@temporal} ? {
 	,time_id
 }
-;
-
-SELECT covariate_id,
-{@temporal} ? {
-	time_id,
-}	
-	value_as_number,
-	COUNT(*) AS total,
-	ROW_NUMBER() OVER (PARTITION BY covariate_id ORDER BY value_as_number) AS rn
-INTO #meas_val_prep
-FROM #meas_val_data
-GROUP BY value_as_number,
-{@temporal} ? {
-	time_id,
-}	
-	covariate_id;
-	
-SELECT s.covariate_id,
-{@temporal} ? {
-	s.time_id,
-}	
-	s.value_as_number,
-	SUM(p.total) AS accumulated
-INTO #meas_val_prep2	
-FROM #meas_val_prep s
-INNER JOIN #meas_val_prep p
-	ON p.rn <= s.rn
-		AND p.covariate_id = s.covariate_id
-GROUP BY s.covariate_id,
-{@temporal} ? {
-	s.time_id,
-}			
-	s.value_as_number;
+),
+meas_val_prep AS (
+	SELECT covariate_id,
+	{@temporal} ? {
+		time_id,
+	}	
+		value_as_number,
+		COUNT(*) AS total,
+		ROW_NUMBER() OVER (PARTITION BY covariate_id ORDER BY value_as_number) AS rn
+	FROM meas_val_data
+	GROUP BY value_as_number,
+	{@temporal} ? {
+		time_id,
+	}	
+	covariate_id
+),
+meas_val_prep2 AS (
+	SELECT s.covariate_id,
+	{@temporal} ? {
+		s.time_id,
+	}	
+		s.value_as_number,
+		SUM(p.total) AS accumulated
+	FROM meas_val_prep s
+	INNER JOIN meas_val_prep p
+		ON p.rn <= s.rn
+			AND p.covariate_id = s.covariate_id
+	GROUP BY s.covariate_id,
+	{@temporal} ? {
+		s.time_id,
+	}			
+		s.value_as_number
+)
 	
 SELECT o.covariate_id,
 {@temporal} ? {
@@ -132,9 +132,8 @@ SELECT o.covariate_id,
 	MIN(CASE WHEN p.accumulated >= .25 * o.count_value THEN value_as_number END) AS p25_value,
 	MIN(CASE WHEN p.accumulated >= .75 * o.count_value THEN value_as_number END) AS p75_value,
 	MIN(CASE WHEN p.accumulated >= .90 * o.count_value THEN value_as_number END) AS p90_value	
-INTO @covariate_table
-FROM #meas_val_prep2 p
-INNER JOIN #meas_val_stats o
+FROM meas_val_prep2 p
+INNER JOIN meas_val_stats o
 	ON o.covariate_id = p.covariate_id
 {@temporal} ? {
 		AND	o.time_id = p.time_id
@@ -147,7 +146,7 @@ GROUP BY o.covariate_id,
 	o.min_value,
 	o.max_value,
 	o.average_value,
-	o.standard_deviation;
+	o.standard_deviation
 } : {
 SELECT covariate_id,
 {@temporal} ? {

@@ -281,12 +281,10 @@ charlson_concepts AS (
 
 -- Feature construction
 {@aggregated} ? {
-
-WITH charlson_data AS (
-	SELECT @row_id_field,
+, charlson_data AS (
+	SELECT subject_id,
 	cohort_start_date,
 	SUM(weight) AS score
-), 
 } : {
 SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 {@temporal} ? {
@@ -307,7 +305,7 @@ FROM (
 }			
 	FROM `@cohort_table` cohort
 	INNER JOIN `@cdm_database_schema/condition_era` condition_era
-		ON cohort.@row_id_field = condition_era.person_id
+		ON cohort.subject_id = condition_era.person_id
 	INNER JOIN charlson_concepts charlson_concepts
 		ON condition_era.condition_concept_id = charlson_concepts.concept_id
 	INNER JOIN charlson_scoring charlson_scoring
@@ -320,16 +318,17 @@ FROM (
 {@cohort_definition_id != -1} ? {		AND cohort.cohort_definition_id = @cohort_definition_id}
 	) temp
 {@aggregated} ? {
-GROUP BY @row_id_field,
+GROUP BY subject_id,
 			cohort_start_date
 } : {
 GROUP BY row_id
 }
 
 {@aggregated} ? {
-WITH t1 AS (
+), 
+t1 AS (
 	SELECT COUNT(*) AS cnt 
-	FROM @cohort_table 
+	FROM `@cohort_table`
 {@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
 	),
 t2 AS (
@@ -338,32 +337,34 @@ t2 AS (
 		MAX(score) AS max_score, 
 		SUM(score) AS sum_score,
 		SUM(score * score) as squared_score
-	FROM #charlson_data
-	)
-SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_score ELSE 0 END AS min_value,
+	FROM charlson_data
+),
+charlson_stats AS (
+	SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_score ELSE 0 END AS min_value,
 	t2.max_score AS max_value,
 	CAST(t2.sum_score / (1.0 * t1.cnt) AS FLOAT) AS average_value,
 	CAST(CASE WHEN t2.cnt = 1 THEN 0 ELSE SQRT((1.0 * t2.cnt*t2.squared_score - 1.0 * t2.sum_score*t2.sum_score) / (1.0 * t2.cnt*(1.0 * t2.cnt - 1))) END AS FLOAT) AS standard_deviation,
 	t2.cnt AS count_value,
 	t1.cnt - t2.cnt AS count_no_value,
 	t1.cnt AS population_size
-INTO #charlson_stats
-FROM t1, t2;
-
-SELECT score,
+	FROM t1 CROSS JOIN t2
+),
+charlson_prep AS (
+	SELECT score,
 	COUNT(*) AS total,
 	ROW_NUMBER() OVER (ORDER BY score) AS rn
-INTO #charlson_prep
-FROM #charlson_data
-GROUP BY score;
-	
-SELECT s.score,
+	FROM charlson_data
+	GROUP BY score
+),
+charlson_prep2 AS (
+	SELECT s.score,
 	SUM(p.total) AS accumulated
-INTO #charlson_prep2	
-FROM #charlson_prep s
-INNER JOIN #charlson_prep p
+	FROM charlson_prep s
+	INNER JOIN charlson_prep p
 	ON p.rn <= s.rn
-GROUP BY s.score;
+	GROUP BY s.score
+)	
+
 
 SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 {@temporal} ? {
@@ -394,17 +395,16 @@ SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 		WHEN .90 * o.population_size < count_no_value THEN 0
 		ELSE MIN(CASE WHEN p.accumulated + count_no_value >= .90 * o.population_size THEN score	END) 
 		END AS p90_value		
-INTO @covariate_table
-FROM #charlson_prep2 p
-CROSS JOIN #charlson_stats o
-{@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
+FROM charlson_prep2 p
+CROSS JOIN charlson_stats o
+{@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM `@output_path/@included_cov_table`)}
 GROUP BY o.count_value,
 	o.count_no_value,
 	o.min_value,
 	o.max_value,
 	o.average_value,
 	o.standard_deviation,
-	o.population_size;
+	o.population_size
 
 } 
 

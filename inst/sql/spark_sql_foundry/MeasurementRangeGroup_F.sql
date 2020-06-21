@@ -22,14 +22,14 @@ FROM (
 		time_id,
 }	
 {@aggregated} ? {
-		cohort.@row_id_field,
+		cohort.subject_id,
 		cohort.cohort_start_date
 } : {
 		cohort.@row_id_field AS row_id
 }
 	FROM `@cohort_table` cohort
 	INNER JOIN `@cdm_database_schema/measurement` measurement
-		ON cohort.@row_id_field = measurement.person_id
+		ON cohort.subject_id = measurement.person_id
 {@temporal} ? {
 	INNER JOIN #time_period time_period
 		ON measurement_date <= date_add(cohort.cohort_start_date, time_period.end_day)
@@ -42,11 +42,11 @@ FROM (
 }
 		AND range_low IS NOT NULL
 		AND range_high IS NOT NULL
-{@excluded_concept_table != ''} ? {		AND measurement_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
-{@included_concept_table != ''} ? {		AND measurement_concept_id IN (SELECT id FROM @included_concept_table)}
+{@excluded_concept_table != ''} ? {		AND measurement_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)}
+{@included_concept_table != ''} ? {		AND measurement_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)}
 {@cohort_definition_id != -1} ? {		AND cohort.cohort_definition_id = @cohort_definition_id}
 ) by_row_id
-{@included_cov_table != ''} ? {WHERE (CAST(measurement_concept_id AS BIGINT) * 10000) + (range_group * 1000) + @analysis_id IN (SELECT id FROM @included_cov_table)}
+{@included_cov_table != ''} ? {WHERE (CAST(measurement_concept_id AS BIGINT) * 10000) + (range_group * 1000) + @analysis_id IN (SELECT id FROM `@output_path/@included_cov_table`)}
 GROUP BY measurement_concept_id,
 	range_group
 {!@aggregated} ? {		

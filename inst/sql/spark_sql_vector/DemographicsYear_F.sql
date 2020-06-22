@@ -1,4 +1,4 @@
-WITH @covariate_table AS (
+@covariate_table AS (
 	SELECT CAST(YEAR(cohort_start_date) * 1000 + @analysis_id AS BIGINT) AS covariate_id,
 	{@temporal} ? {
 		CAST(NULL AS INT) AS time_id,

@@ -1,4 +1,4 @@
-WITH @covariate_table AS (
+@covariate_table AS (
 	WITH meas_cov AS (
 		SELECT DISTINCT measurement_concept_id,
 	unit_concept_id,

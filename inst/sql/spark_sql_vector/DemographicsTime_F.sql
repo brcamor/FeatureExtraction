@@ -1,4 +1,4 @@
-WITH @covariate_table AS (
+@covariate_table AS (
 	{@aggregated} ? {
 	SELECT subject_id,
 		cohort_start_date,

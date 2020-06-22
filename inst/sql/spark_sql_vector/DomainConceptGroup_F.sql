@@ -1,5 +1,4 @@
 @covariate_table AS (
-
 	WITH groups AS (
 		{@domain_table == 'drug_exposure' | @domain_table == 'drug_era'} ? {
 			SELECT DISTINCT 
@@ -9,7 +8,7 @@
 			INNER JOIN concept
 				ON ancestor_concept_id = concept_id
 			WHERE ((vocabulary_id = 'ATC'
-					AND LEN(concept_code) IN (1, 3, 4, 5))
+					AND length(concept_code) IN (1, 3, 4, 5))
 				OR (standard_concept = 'S' 
 			{@domain_table == 'drug_era'} ? {		AND concept_class_id = 'Ingredient'}
 					AND domain_id = 'Drug'))
@@ -92,7 +91,7 @@
 	}	
 		FROM @cohort_table cohort
 		INNER JOIN @domain_table @domain_table
-			ON cohort.@row_id_field = @domain_table.person_id
+			ON cohort.subject_id = @domain_table.person_id
 		INNER JOIN groups
 			ON @domain_concept_id = descendant_concept_id
 	{@temporal} ? {
@@ -116,3 +115,4 @@
 	}	
 	}
 )
+

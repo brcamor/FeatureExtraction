@@ -13,7 +13,7 @@
 	}
 	FROM @cohort_table cohort
 	INNER JOIN person person
-		ON cohort.@row_id_field = person.person_id
+		ON cohort.subject_id = person.person_id
 	WHERE race_concept_id IN (
 			SELECT concept_id
 			FROM concept

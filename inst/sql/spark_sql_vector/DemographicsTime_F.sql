@@ -1,9 +1,9 @@
 @covariate_table AS (
 	{@aggregated} ? {
-	SELECT subject_id,
+	WITH dem_time_data AS (
+		SELECT subject_id,
 		cohort_start_date,
 		days
-	INTO #dem_time_data
 	} : {
 	SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 	{@temporal} ? {
@@ -15,7 +15,7 @@
 	FROM (
 		SELECT 
 	{@aggregated} ? {
-			subject_id,
+			cohort.subject_id,
 			cohort_start_date,	
 	} : {
 			cohort.@row_id_field AS row_id,	
@@ -32,7 +32,7 @@
 		FROM @cohort_table cohort
 	{@sub_type != 'inCohort'} ? {
 		INNER JOIN observation_period observation_period
-			ON cohort.@row_id_field = observation_period.person_id
+			ON cohort.subject_id = observation_period.person_id
 			AND observation_period_start_date <= cohort_start_date
 			AND observation_period_end_date >= cohort_start_date
 	}
@@ -40,9 +40,10 @@
 		) raw_data
 
 	{@aggregated} ? {
-	WITH t1 AS (
+	),
+	t1 AS (
 		SELECT COUNT(*) AS cnt 
-		FROM @cohort_table 
+		FROM @cohort_table
 	{@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
 		),
 	t2 AS (
@@ -51,32 +52,33 @@
 			MAX(days) AS max_days, 
 			SUM(CAST(days AS BIGINT)) AS sum_days, 
 			SUM(CAST(days AS BIGINT) * CAST(days AS BIGINT)) AS squared_days 
-		FROM #dem_time_data
-		)
-	SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_days ELSE 0 END AS min_value,
+		FROM dem_time_data
+	),
+	dem_time_stats AS (
+		SELECT CASE WHEN t2.cnt = t1.cnt THEN t2.min_days ELSE 0 END AS min_value,
 		t2.max_days AS max_value,
 		CAST(t2.sum_days / (1.0 * t1.cnt) AS FLOAT) AS average_value,
 		CAST(CASE WHEN t2.cnt = 1 THEN 0 ELSE SQRT((1.0 * t2.cnt*t2.squared_days - 1.0 * t2.sum_days*t2.sum_days) / (1.0 * t2.cnt*(1.0 * t2.cnt - 1))) END AS FLOAT) AS standard_deviation,
 		t2.cnt AS count_value,
 		t1.cnt - t2.cnt AS count_no_value,
 		t1.cnt AS population_size
-	INTO #dem_time_stats
-	FROM t1, t2;
-
-	SELECT days,
+		FROM t1 CROSS JOIN t2
+	),
+	dem_time_prep AS (
+		SELECT days,
 		COUNT(*) AS total,
 		ROW_NUMBER() OVER (ORDER BY days) AS rn
-	INTO #dem_time_prep
-	FROM #dem_time_data
-	GROUP BY days;
-		
-	SELECT s.days,
+		FROM dem_time_data
+		GROUP BY days
+	),
+	dem_time_prep2 AS (
+		SELECT s.days,
 		SUM(p.total) AS accumulated
-	INTO #dem_time_prep2	
-	FROM #dem_time_prep s
-	INNER JOIN #dem_time_prep p
-		ON p.rn <= s.rn
-	GROUP BY s.days;
+		FROM dem_time_prep s
+		INNER JOIN dem_time_prep p
+			ON p.rn <= s.rn
+		GROUP BY s.days
+	)
 
 	SELECT CAST(1000 + @analysis_id AS BIGINT) AS covariate_id,
 	{@temporal} ? {
@@ -107,9 +109,8 @@
 			WHEN .90 * o.population_size < count_no_value THEN 0
 			ELSE MIN(CASE WHEN p.accumulated + count_no_value >= .90 * o.population_size THEN days	END) 
 			END AS p90_value		
-	INTO @covariate_table
-	FROM #dem_time_prep2 p
-	CROSS JOIN #dem_time_stats o
+	FROM dem_time_prep2 p
+	CROSS JOIN dem_time_stats o
 	{@included_cov_table != ''} ? {WHERE 1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
 	GROUP BY o.count_value,
 		o.count_no_value,
@@ -117,6 +118,6 @@
 		o.max_value,
 		o.average_value,
 		o.standard_deviation,
-		o.population_size;
+		o.population_size
 	} 
 )

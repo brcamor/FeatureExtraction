@@ -12,11 +12,11 @@
 	}	
 		row_id,
 		age AS covariate_value
-	}
+	}	
 	FROM (
 		SELECT 
 	{@aggregated} ? {
-			@row_id_field,
+			cohort.subject_id,
 			cohort_start_date,	
 	} : {
 			cohort.@row_id_field AS row_id,	
@@ -24,7 +24,7 @@
 			YEAR(cohort_start_date) - year_of_birth AS age
 		FROM @cohort_table cohort
 		INNER JOIN person person
-			ON cohort.@row_id_field = person.person_id
+			ON cohort.subject_id = person.person_id
 	{@cohort_definition_id != -1} ? {	WHERE cohort.cohort_definition_id = @cohort_definition_id}
 		) raw_data
 
@@ -52,7 +52,7 @@
 		t2.cnt AS count_value,
 		t1.cnt - t2.cnt AS count_no_value,
 		t1.cnt AS population_size
-		FROM t1, t2	
+		FROM t1 CROSS JOIN t2	
 	),
 
 	dem_age_prep AS (

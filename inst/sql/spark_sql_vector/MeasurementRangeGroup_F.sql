@@ -21,14 +21,14 @@
 			time_id,
 	}	
 	{@aggregated} ? {
-			cohort.@row_id_field,
+			cohort.subject_id,
 			cohort.cohort_start_date
 	} : {
 			cohort.@row_id_field AS row_id
 	}
 		FROM @cohort_table cohort
 		INNER JOIN measurement measurement
-			ON cohort.@row_id_field = measurement.person_id
+			ON cohort.subject_id = measurement.person_id
 	{@temporal} ? {
 		INNER JOIN #time_period time_period
 			ON measurement_date <= date_add(cohort.cohort_start_date, time_period.end_day)
@@ -54,4 +54,5 @@
 	{@temporal} ? {
 		,time_id
 	} 
-) 
+)
+

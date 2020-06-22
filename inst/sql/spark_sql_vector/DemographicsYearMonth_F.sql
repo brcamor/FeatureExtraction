@@ -11,7 +11,7 @@
 	}
 	FROM @cohort_table cohort
 	INNER JOIN person person
-		ON cohort.@row_id_field = person.person_id
+		ON cohort.subject_id = person.person_id
 	{@included_cov_table != ''} ? {WHERE YEAR(cohort_start_date)*100000 + MONTH(cohort_start_date)*1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
 	{@cohort_definition_id != -1} ? {
 		{@included_cov_table != ''} ? {		AND} :{WHERE} cohort.cohort_definition_id = @cohort_definition_id

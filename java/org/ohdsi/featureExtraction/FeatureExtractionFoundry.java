@@ -50,6 +50,7 @@ public class FeatureExtractionFoundry {
 	private static String									createConceptTablesPython		= null;
 	private static Map<String, Map<String, OtherParameter>>	typeToNameToOtherParameters		= null;
 	private static Set<String>								otherParameterNames				= null;
+	private static String									semanticsType					= null;
 	
 	private static String									TEMPORAL						= "temporal";
 	private static String									ANALYSIS_ID						= "analysisId";
@@ -108,6 +109,7 @@ public class FeatureExtractionFoundry {
 			lock.lock();
 			try {
 				if (otherParameterNames == null) { // Could have been loaded before acquiring the lock
+					semanticsType = packageFolder; // If 'transforms' or 'workbook' uses different semantics for table creation
 					otherParameterNames = new HashSet<String>();
 					loadOtherParameters(packageFolder);
 					nameToSql = new HashMap<String, String>();
@@ -565,7 +567,9 @@ public class FeatureExtractionFoundry {
 		}
 		boolean hasFeature = false;
 		StringBuilder sql = new StringBuilder();
-		sql.append("CREATE TABLE `" + outputPath + "/covariate_all` AS\n");
+
+		if (!semanticsType.equals("workbook")) 
+			sql.append("CREATE TABLE `" + outputPath + "/covariate_all` AS\n");
 		if (aggregated) {
 			sql.append(
 					"SELECT all_covariates.covariate_id,\n  all_covariates.sum_value,\n  CAST(all_covariates.sum_value / (1.0 * total.total_count) AS FLOAT) AS average_value\nFROM (");
@@ -578,7 +582,10 @@ public class FeatureExtractionFoundry {
 			if (analysis.has("covariateTable") && (!aggregated || analysis.getBoolean("isBinary"))) {
 				if (hasFeature)
 					sql.append(" UNION ALL\n");
-				sql.append("SELECT " + fields.toString() + " FROM `" + outputPath + "/" + analysis.getString("covariateTable") + '`');
+				if (semanticsType.equals("transforms"))
+					sql.append("SELECT " + fields.toString() + " FROM `" + outputPath + "/" + analysis.getString("covariateTable") + '`');
+				else if (semanticsType.equals("workbook"))
+					sql.append("SELECT " + fields.toString() + " FROM " + analysis.getString("covariateTable"));
 				hasFeature = true;
 			}
 		}

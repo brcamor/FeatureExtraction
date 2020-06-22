@@ -9,10 +9,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -32,10 +32,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -56,10 +56,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -82,10 +82,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -107,10 +107,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -146,10 +146,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -172,10 +172,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -197,10 +197,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -227,10 +227,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -253,10 +253,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -278,10 +278,10 @@
 			SELECT 
 				source.concept_code AS source_code,
 				target.concept_id AS target_concept_id
-			FROM `@vocab_path/concept_relationship` concept_relationship
-			INNER JOIN `@vocab_path/concept` source
+			FROM concept_relationship concept_relationship
+			INNER JOIN concept source
 				ON source.concept_id = concept_relationship.concept_id_1
-			INNER JOIN `@vocab_path/concept` target
+			INNER JOIN concept target
 				ON target.concept_id = concept_relationship.concept_id_2
 			WHERE source.vocabulary_id = 'ICD9CM'
 				AND target.vocabulary_id = 'SNOMED'
@@ -315,8 +315,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}			
-		FROM `@cohort_table` cohort
-		INNER JOIN `@cdm_database_schema/condition_era` condition_era
+		FROM @cohort_table cohort
+		INNER JOIN condition_era condition_era
 			ON cohort.@row_id_field = condition_era.person_id
 		INNER JOIN dcsi_scoring
 			ON condition_concept_id = dcsi_scoring.dcsi_concept_id

@@ -39,7 +39,7 @@
 		SELECT 
 			1 as diag_category_id,
 			descendant_concept_id as concept_id
-		FROM `@vocab_path/concept_ancestor`
+		FROM concept_ancestor
 			WHERE ancestor_concept_id IN (316139)
 
 		UNION ALL
@@ -47,7 +47,7 @@
 		--Hypertension
 		SELECT 2 as diag_category_id,
 			descendant_concept_id as concept_id
-		FROM `@vocab_path/concept_ancestor`
+		FROM concept_ancestor
 		WHERE ancestor_concept_id IN (316866)
 
 		UNION ALL
@@ -56,7 +56,7 @@
 		SELECT 
 			4 as diag_category_id,
 			descendant_concept_id as concept_id
-		FROM `@vocab_path/concept_ancestor`
+		FROM concept_ancestor
 		WHERE ancestor_concept_id IN (201820)
 
 		UNION ALL 
@@ -65,7 +65,7 @@
 		SELECT 
 			5 as diag_category_id,
 			descendant_concept_id as concept_id
-		FROM `@vocab_path/concept_ancestor`
+		FROM concept_ancestor
 		WHERE ancestor_concept_id IN (381591, 434056)
 	)
 
@@ -92,8 +92,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}			
-		FROM `@cohort_table` cohort
-		INNER JOIN `@cdm_database_schema/condition_era` condition_era
+		FROM @cohort_table cohort
+		INNER JOIN condition_era condition_era
 			ON cohort.@row_id_field = condition_era.person_id
 		INNER JOIN chads2_concepts 
 			ON condition_era.condition_concept_id = chads2_concepts.concept_id
@@ -116,8 +116,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}	  
-		FROM `@cohort_table` cohort
-		INNER JOIN `@cdm_database_schema/person` person
+		FROM @cohort_table cohort
+		INNER JOIN person person
 			ON cohort.@row_id_field = person.person_id
 	{@cohort_definition_id != -1} ? {	WHERE cohort.cohort_definition_id = @cohort_definition_id}		
 		) temp

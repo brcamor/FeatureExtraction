@@ -1,4 +1,4 @@
-WITH @covariate_table AS (
+@covariate_table AS (
 	SELECT 
 		(CAST(measurement_concept_id AS BIGINT) * 10000) + (range_group * 1000) + @analysis_id AS covariate_id,
 	{@temporal} ? {
@@ -26,8 +26,8 @@ WITH @covariate_table AS (
 	} : {
 			cohort.@row_id_field AS row_id
 	}
-		FROM `@cohort_table` cohort
-		INNER JOIN `@cdm_database_schema/measurement` measurement
+		FROM @cohort_table cohort
+		INNER JOIN measurement measurement
 			ON cohort.@row_id_field = measurement.person_id
 	{@temporal} ? {
 		INNER JOIN #time_period time_period

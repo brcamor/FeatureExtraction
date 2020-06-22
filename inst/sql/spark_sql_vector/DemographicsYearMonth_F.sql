@@ -9,8 +9,8 @@ WITH @covariate_table AS (
 		cohort.@row_id_field AS row_id,
 		1 AS covariate_value
 	}
-	FROM `@cohort_table` cohort
-	INNER JOIN `@cdm_database_schema/person` person
+	FROM @cohort_table cohort
+	INNER JOIN person person
 		ON cohort.@row_id_field = person.person_id
 	{@included_cov_table != ''} ? {WHERE YEAR(cohort_start_date)*100000 + MONTH(cohort_start_date)*1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}
 	{@cohort_definition_id != -1} ? {

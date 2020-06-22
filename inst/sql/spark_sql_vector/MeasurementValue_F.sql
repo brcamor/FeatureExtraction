@@ -3,7 +3,7 @@ WITH @covariate_table AS (
 		SELECT DISTINCT measurement_concept_id,
 	unit_concept_id,
 	CAST((CAST(measurement_concept_id AS BIGINT) * 1000000) + ((unit_concept_id - (FLOOR(unit_concept_id / 1000) * 1000)) * 1000) + @analysis_id AS BIGINT) AS covariate_id
-	FROM `@cdm_database_schema/measurement`
+	FROM measurement
 	WHERE value_as_number IS NOT NULL
 	{@excluded_concept_table != ''} ? {		AND measurement_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
 	{@included_concept_table != ''} ? {		AND measurement_concept_id IN (SELECT id FROM @included_concept_table)}
@@ -45,8 +45,8 @@ WITH @covariate_table AS (
 		}
 				covariate_id,
 				value_as_number
-			FROM `@cohort_table` cohort
-			INNER JOIN `@cdm_database_schema/measurement` measurement
+			FROM @cohort_table cohort
+			INNER JOIN measurement measurement
 				ON cohort.@row_id_field = measurement.person_id
 			INNER JOIN meas_cov
 				ON meas_cov.measurement_concept_id = measurement.measurement_concept_id 

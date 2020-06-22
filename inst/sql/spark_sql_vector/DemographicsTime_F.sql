@@ -29,9 +29,9 @@ WITH @covariate_table AS (
 	{@sub_type == 'inCohort'} ? {
 			datediff(cohort_end_date, cohort_start_date) AS days
 	} 
-		FROM `@cohort_table` cohort
+		FROM @cohort_table cohort
 	{@sub_type != 'inCohort'} ? {
-		INNER JOIN `@cdm_database_schema/observation_period` observation_period
+		INNER JOIN observation_period observation_period
 			ON cohort.@row_id_field = observation_period.person_id
 			AND observation_period_start_date <= cohort_start_date
 			AND observation_period_end_date >= cohort_start_date

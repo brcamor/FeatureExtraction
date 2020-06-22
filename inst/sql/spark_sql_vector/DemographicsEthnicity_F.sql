@@ -11,12 +11,12 @@
 		cohort.@row_id_field AS row_id,
 		1 AS covariate_value 
 	}
-	FROM `@cohort_table` cohort
-	INNER JOIN `@cdm_database_schema/person` person
+	FROM @cohort_table cohort
+	INNER JOIN person person
 		ON cohort.@row_id_field = person.person_id
 	WHERE ethnicity_concept_id  IN (
 			SELECT concept_id
-			FROM `@vocab_path/concept`
+			FROM concept
 			WHERE LOWER(concept_class_id) = 'ethnicity'
 			)
 	{@excluded_concept_table != ''} ? {	AND ethnicity_concept_id  NOT IN (SELECT id FROM @excluded_concept_table)}

@@ -21,8 +21,8 @@ WITH @covariate_table AS (
 	} : {
 			cohort.@row_id_field AS row_id
 	}
-		FROM `@cohort_table` cohort
-		INNER JOIN `@cdm_database_schema/@domain_table` @domain_table
+		FROM @cohort_table cohort
+		INNER JOIN @domain_table @domain_table
 			ON cohort.@row_id_field = @domain_table.person_id
 	{@temporal} ? {
 		INNER JOIN #time_period time_period

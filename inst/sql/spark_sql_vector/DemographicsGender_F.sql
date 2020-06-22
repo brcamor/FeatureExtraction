@@ -11,8 +11,8 @@
 		cohort.@row_id_field AS row_id,
 		1 AS covariate_value 
 	}
-	FROM `@cohort_table` cohort
-	INNER JOIN `@cdm_database_schema/person` person
+	FROM @cohort_table cohort
+	INNER JOIN person person
 		ON cohort.@row_id_field = person.person_id
 	WHERE gender_concept_id != 0
 	{@excluded_concept_table != ''} ? {	AND gender_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}

@@ -5,8 +5,8 @@ WITH @covariate_table AS (
 			SELECT DISTINCT 
 				descendant_concept_id,
 				ancestor_concept_id
-			FROM `@vocab_path/concept_ancestor`
-			INNER JOIN `@vocab_path/concept`
+			FROM concept_ancestor
+			INNER JOIN concept
 				ON ancestor_concept_id = concept_id
 			WHERE ((vocabulary_id = 'ATC'
 					AND LEN(concept_code) IN (1, 3, 4, 5))
@@ -24,13 +24,13 @@ WITH @covariate_table AS (
 			SELECT DISTINCT 
 				descendant_concept_id,
 				ancestor_concept_id
-			FROM `@vocab_path/concept_ancestor`
+			FROM concept_ancestor
 			INNER JOIN (
 				SELECT concept_id
-				FROM `@vocab_path/concept`
+				FROM concept
 				INNER JOIN (
 				SELECT *
-				FROM `@vocab_path/concept_ancestor`
+				FROM concept_ancestor
 				WHERE ancestor_concept_id = 441840 /* SNOMED clinical finding */
 				AND (min_levels_of_separation > 2
 					OR descendant_concept_id IN (433736, 433595, 441408, 72404, 192671, 137977, 434621, 437312, 439847, 4171917, 438555, 4299449, 375258, 76784, 40483532, 4145627, 434157, 433778, 258449, 313878)
@@ -90,8 +90,8 @@ WITH @covariate_table AS (
 	} : {
 			cohort.@row_id_field AS row_id
 	}	
-		FROM `@cohort_table` cohort
-		INNER JOIN `@cdm_database_schema/@domain_table` @domain_table
+		FROM @cohort_table cohort
+		INNER JOIN @domain_table @domain_table
 			ON cohort.@row_id_field = @domain_table.person_id
 		INNER JOIN groups
 			ON @domain_concept_id = descendant_concept_id

@@ -62,7 +62,6 @@ getDbDefaultCovariateData <- function(connection,
   rJava::J("org.ohdsi.featureExtraction.FeatureExtraction")$init(system.file("", package = "FeatureExtraction"))
   json <- rJava::J("org.ohdsi.featureExtraction.FeatureExtraction")$createSql(settings, aggregated, cohortTable, rowIdField, as.integer(cohortId), cdmDatabaseSchema)
   todo <- .fromJson(json)
-  
   if (length(todo$tempTables) != 0) {
     ParallelLogger::logInfo("Sending temp tables to server")
     for (i in 1:length(todo$tempTables)) {
@@ -82,8 +81,7 @@ getDbDefaultCovariateData <- function(connection,
                               targetDialect = attr(connection, "dbms"),
                               oracleTempSchema = oracleTempSchema)
   profile <- (!is.null(getOption("dbProfile")) && getOption("dbProfile") == TRUE)
-  print(sql)
-  #DatabaseConnector::executeSql(connection, sql, profile = profile)
+  DatabaseConnector::executeSql(connection, sql, profile = profile)
   
   if (missing(targetCovariateTable) || is.null(targetCovariateTable)) {
     ParallelLogger::logInfo("Fetching data from server")
@@ -180,13 +178,21 @@ getDbDefaultCovariateData <- function(connection,
     ParallelLogger::logInfo("Writing data took", signif(delta, 3), " ", attr(delta, "units"))
     
   }
-
   # Drop temp tables
   sql <- SqlRender::translate(sql = todo$sqlCleanup,
                               targetDialect = attr(connection, "dbms"),
                               oracleTempSchema = oracleTempSchema)
-  print(sql)
   DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
+  if (length(todo$tempTables) != 0) {
+    for (i in 1:length(todo$tempTables)) {
+      sql <- "TRUNCATE TABLE @table;\nDROP TABLE @table;\n"
+      sql <- SqlRender::render(sql, table = names(todo$tempTables)[i])
+      sql <- SqlRender::translate(sql = sql,
+                                  targetDialect = attr(connection, "dbms"),
+                                  oracleTempSchema = oracleTempSchema)
+      DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
+    }
+  }
   
   if (missing(targetCovariateTable) || is.null(targetCovariateTable)) {
     attr(covariateData, "metaData") <- list()

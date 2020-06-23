@@ -26,21 +26,21 @@ SELECT temp.covariate_id,
 	covariate_ids.measurement_concept_id AS concept_id
 FROM (
 	SELECT DISTINCT covariate_id
-	FROM `@output_path/@covariate_table`
+	FROM @covariate_table
 	) temp
 INNER JOIN (
 	SELECT 
 		DISTINCT measurement_concept_id,
 		unit_concept_id,
 		CAST((CAST(measurement_concept_id AS BIGINT) * 1000000) + ((unit_concept_id - (FLOOR(unit_concept_id / 1000) * 1000)) * 1000) + @analysis_id AS BIGINT) AS covariate_id
-	FROM `@cdm_database_schema/measurement`
+	FROM @cdm_database_schema/measurement
 		WHERE value_as_number IS NOT NULL
-		{@excluded_concept_table != ''} ? {		AND measurement_concept_id NOT IN (SELECT id FROM `@output_path/@excluded_concept_table`)}
-		{@included_concept_table != ''} ? {		AND measurement_concept_id IN (SELECT id FROM `@output_path/@included_concept_table`)}
-		{@included_cov_table != ''} ? {		AND CAST((CAST(measurement_concept_id AS BIGINT) * 1000000) + ((unit_concept_id - (FLOOR(unit_concept_id / 1000) * 1000)) * 1000) + @analysis_id AS BIGINT) IN (SELECT id FROM `@output_path/@included_cov_table`)}	
+		{@excluded_concept_table != ''} ? {		AND measurement_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
+		{@included_concept_table != ''} ? {		AND measurement_concept_id IN (SELECT id FROM @included_concept_table)}
+		{@included_cov_table != ''} ? {		AND CAST((CAST(measurement_concept_id AS BIGINT) * 1000000) + ((unit_concept_id - (FLOOR(unit_concept_id / 1000) * 1000)) * 1000) + @analysis_id AS BIGINT) IN (SELECT id FROM @included_cov_table)}	
 	) covariate_ids
 	ON covariate_ids.covariate_id = temp.covariate_id
-LEFT JOIN `@vocab_path/concept` measurement_concept
+LEFT JOIN concept measurement_concept
 	ON covariate_ids.measurement_concept_id = measurement_concept.concept_id
-LEFT JOIN `@vocab_path/concept` unit_concept
+LEFT JOIN concept unit_concept
 	ON covariate_ids.unit_concept_id = unit_concept.concept_id

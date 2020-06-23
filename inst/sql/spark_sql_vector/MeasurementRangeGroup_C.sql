@@ -17,7 +17,7 @@ FROM (
 			WHEN FLOOR(covariate_id / 1000.0) - (FLOOR(covariate_id / 10000.0) * 10) = 2 THEN 'within normal range'
 			WHEN FLOOR(covariate_id / 1000.0) - (FLOOR(covariate_id / 10000.0) * 10) = 3 THEN 'above normal range'
 	  END AS range_name
-	FROM `@output_path/@covariate_table`
+	FROM @covariate_table
 	) t1
-LEFT JOIN `@vocab_path/concept`
+LEFT JOIN concept
 	ON concept_id = FLOOR(covariate_id / 10000.0)

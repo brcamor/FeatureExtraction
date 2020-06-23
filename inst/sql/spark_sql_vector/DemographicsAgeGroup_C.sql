@@ -10,5 +10,5 @@ SELECT covariate_id,
 	0 AS concept_id
 FROM (
 	SELECT DISTINCT covariate_id
-	FROM `@output_path/@covariate_table`
+	FROM @covariate_table
 	) t1

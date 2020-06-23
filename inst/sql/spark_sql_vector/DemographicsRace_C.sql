@@ -4,8 +4,8 @@ SELECT covariate_id,
 	CAST((covariate_id - @analysis_id) / 1000 AS INT) AS concept_id
 FROM (
 	SELECT DISTINCT covariate_id
-	FROM `@output_path/@covariate_table`
+	FROM @covariate_table
 	) t1
-LEFT JOIN `@vocab_path/concept`
+LEFT JOIN concept
 	ON concept_id = CAST((covariate_id - @analysis_id) / 1000 AS INT)
 	

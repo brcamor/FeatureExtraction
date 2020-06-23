@@ -354,7 +354,7 @@ LEFT JOIN (
 	FROM source_to_concept_map
 	WHERE source_vocabulary_id = 2
 		AND target_vocabulary_id = 1
-		AND length(source_code) = 3
+		AND LEN(source_code) = 3
 	) icd9_to_new_concept_id
 	ON icd9_to_new_concept_id.icd9 = LEFT(source_to_concept_map.source_code, 3)
 WHERE source_vocabulary_id = 2
@@ -380,7 +380,7 @@ LEFT JOIN (
 		concept_name AS icd9_concept_name
 	FROM concept
 	WHERE vocabulary_id = 'ICD9CM'
-		AND length(concept_code) = 3
+		AND LEN(concept_code) = 3
 	) icd9_to_new_concept_id
 	ON icd9 = LEFT(icd9.concept_code, 3)
 WHERE condition.standard_concept = 'S'

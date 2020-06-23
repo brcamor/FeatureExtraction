@@ -9,7 +9,7 @@ FROM @cdm_database_schema.concept_ancestor
 INNER JOIN @cdm_database_schema.concept
 	ON ancestor_concept_id = concept_id
 WHERE ((vocabulary_id = 'ATC'
-		AND length(concept_code) IN (1, 3, 4, 5))
+		AND LEN(concept_code) IN (1, 3, 4, 5))
 	OR (standard_concept = 'S' 
 {@domain_table == 'drug_era'} ? {		AND concept_class_id = 'Ingredient'}
 		AND domain_id = 'Drug'))

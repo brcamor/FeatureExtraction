@@ -16,9 +16,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 ---
-
+  
 ```{r set-options,echo=FALSE,message=FALSE,warning=FALSE,eval=TRUE}
-options(width=200)
+options(width = 200)
 library(FeatureExtraction)
 vignetteFolder <- "s:/temp/vignetteFeatureExtraction"
 ```
@@ -29,7 +29,7 @@ vignetteFolder <- "s:/temp/vignetteFeatureExtraction"
 
 The `FeatureExtraction` package can be used to create features for a cohort, using the information stored in the Common Data Model. A cohort is defined a set of persons who satisfy one or more inclusion criteria for a duration of time. Features can for example be diagnoses observed prior to entering the cohort. Some people might also refer to such features as 'baseline characteristics', or to features in general as 'covariates', and we will use those terms interchangeably throughout this vignette.
 
-This vignette describes how features can be contructed using the default covariate definitions embeded in the package. Although these definitions allow quite some customization through predefined parameters, it is possible that someone needs more customization. In this case, the reader is referred to the other vignettes included in this package that deal with constructing completely custom covariates.
+This vignette describes how features can be constructed using the default covariate definitions embedded in the package. Although these definitions allow quite some customization through predefined parameters, it is possible that someone needs more customization. In this case, the reader is referred to the other vignettes included in this package that deal with constructing completely custom covariates.
 
 This vignette will first describe how to specify which features to construct. In many situations, for example when using `FeatureExtraction` as part of another package such as `CohortMethod` or `PatientLevelPrediction`, that is all one needs to know about the `FeatureExtraction` package, as the actual calling of the package is done by the other package. However, it is also possible to use this package on its own, for example to create a descriptive characterization of a cohort to include in a paper.
 
@@ -213,25 +213,25 @@ File cohortsOfInterest.sql
 ***********************************/
 
 IF OBJECT_ID('@resultsDatabaseSchema.cohorts_of_interest', 'U') IS NOT NULL
-  DROP TABLE @resultsDatabaseSchema.cohorts_of_interest;
+DROP TABLE @resultsDatabaseSchema.cohorts_of_interest;
 
 SELECT first_use.*
 INTO @resultsDatabaseSchema.cohorts_of_interest
 FROM (
-  SELECT drug_concept_id AS cohort_definition_id,
-  	MIN(drug_era_start_date) AS cohort_start_date,
-  	MIN(drug_era_end_date) AS cohort_end_date,
-  	person_id 
-  FROM @cdmDatabaseSchema.drug_era
-  WHERE drug_concept_id = 1118084-- celecoxib
-    OR drug_concept_id = 1124300 --diclofenac
-  GROUP BY drug_concept_id, 
-    person_id
+SELECT drug_concept_id AS cohort_definition_id,
+MIN(drug_era_start_date) AS cohort_start_date,
+MIN(drug_era_end_date) AS cohort_end_date,
+person_id 
+FROM @cdmDatabaseSchema.drug_era
+WHERE drug_concept_id = 1118084-- celecoxib
+OR drug_concept_id = 1124300 --diclofenac
+GROUP BY drug_concept_id, 
+person_id
 ) first_use 
 INNER JOIN @cdmDatabaseSchema.observation_period
-  ON first_use.person_id = observation_period.person_id
-  AND cohort_start_date >= observation_period_start_date
-  AND cohort_end_date <= observation_period_end_date
+ON first_use.person_id = observation_period.person_id
+AND cohort_start_date >= observation_period_start_date
+AND cohort_end_date <= observation_period_end_date
 WHERE DATEDIFF(DAY, observation_period_start_date, cohort_start_date) >= 365;
 ```
 
@@ -263,7 +263,7 @@ sql <- translate(sql, targetDialect = connectionDetails$dbms)
 querySql(connection, sql)
 ```
 ```{r echo=FALSE,message=FALSE}
-data.frame(cohort_concept_id = c(1124300,1118084),count=c(240761,47293))
+data.frame(cohort_concept_id = c(1124300, 1118084), count = c(240761, 47293))
 ```
 
 ## Creating per-person covariates for a cohort of interest
@@ -284,7 +284,7 @@ covariateData <- getDbCovariateData(connectionDetails = connectionDetails,
 summary(covariateData)
 ```
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "covariatesPerPerson"))){
+if (file.exists(file.path(vignetteFolder, "covariatesPerPerson"))) {
   covariateData <- loadCovariateData(file.path(vignetteFolder, "covariatesPerPerson"))
   summary(covariateData)
 }
@@ -297,10 +297,9 @@ The main component of the `covariateData` object is `covariates`:
 covariateData$covariates
 ```
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "covariatesPerPerson"))){
-  cvs <- covariateData$covariates
-  cvs$rowId <- ff::ff(1:nrow(cvs))
-  cvs
+if (file.exists(file.path(vignetteFolder, "covariatesPerPerson"))) {
+  covariateData$covariates %>%
+    mutate(rowId = row_number())
 }
 ```
 The columns are defined as follows:
@@ -311,7 +310,7 @@ The columns are defined as follows:
 
 ### Saving the data to file
 
-Creating covariates can take considerable computing time, and it is probably a good idea to save them for future sessions. Because `covariateData` objects use `ff`, we cannot use R's regular save function. Instead, we'll have to use the `saveCovariateData()` function:
+Creating covariates can take considerable computing time, and it is probably a good idea to save them for future sessions. Because `covariateData` objects use `Andromeda`, we cannot use R's regular save function. Instead, we'll have to use the `saveCovariateData()` function:
 
 ```{r eval=FALSE}
 saveCovariateData(covariateData, "covariates")
@@ -337,11 +336,11 @@ tidyCovariates <- tidyCovariateData(covariateData,
 
 If we want to know how many infrequent covariates were removed we can query the `metaData` object:
 ```{r eval=FALSE}
-deletedCovariateIds <- tidyCovariates$metaData$deletedInfrequentCovariateIds
+deletedCovariateIds <- attr(tidyCovariates, "metaData")$deletedInfrequentCovariateIds
 head(deletedCovariateIds)
 ```
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "deletedInfrequentCovariateIds.rds"))){
+if (file.exists(file.path(vignetteFolder, "deletedInfrequentCovariateIds.rds"))) {
   deletedCovariateIds <- readRDS(file.path(vignetteFolder, "deletedInfrequentCovariateIds.rds"))
   head(deletedCovariateIds)
 }
@@ -349,7 +348,7 @@ if (file.exists(file.path(vignetteFolder, "deletedInfrequentCovariateIds.rds")))
 
 Similarly, if we want to know which redundant covariates were removed we can also query the `metaData` object:
 ```{r eval=FALSE}
-deletedCovariateIds <- tidyCovariates$metaData$deletedRedundantCovariateIds
+deletedCovariateIds <- attr(tidyCovariates, "metaData")$deletedRedundantCovariateIds
 head(deletedCovariateIds)
 ```
 ```{r echo=FALSE,message=FALSE}
@@ -359,23 +358,27 @@ if (file.exists(file.path(vignetteFolder, "deletedRedundantCovariateIds.rds"))){
 }
 ```
 
-If we want to know what these numbers mean, we can use the `covariateRef` object that is part of any `covariateData` object. Because `covariateRef`, like other parts of `covariateData`, uses the `ff` package, it is advised to load the `ffbase` package which allows `ff` objects to be used as data frames:
+If we want to know what these numbers mean, we can use the `covariateRef` object that is part of any `covariateData` object. Remember that the covariate data is stored in an `Andromeda` object, so we should use the proper syntax for querying these objects (see the `Andromeda` package documentation):
 
 ```{r eval=FALSE}
-library(ffbase)
-covariateData$covariateRef[covariateData$covariateRef$covariateId %in% deletedCovariateIds, ]
+library(Andromeda)
+covariateData$covariateRef %>%
+  filter(covariateId %in% deletedCovariateIds, ) %>%
+  collect()
 ```
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
-if (file.exists(file.path(vignetteFolder, "deletedRedundantCovariateIds.rds"))){
-  library(ffbase)
-   truncRight <- function(x, n) {
+library(Andromeda)
+if (file.exists(file.path(vignetteFolder, "deletedRedundantCovariateIds.rds"))) {
+  truncRight <- function(x, n) {
     nc <- nchar(x)
-    x[nc > (n-3)] <- paste('...',substr(x[nc > (n-3)], nc[nc > (n-3)]-n+1, nc[nc > (n-3)]),sep="")
+    x[nc > (n - 3)] <- paste('...',substr(x[nc > (n - 3)], nc[nc > (n - 3)] - n + 1, nc[nc > (n - 3)]), sep = "")
     x
-   }
-   cr <- as.ram(covariateData$covariateRef[covariateData$covariateRef$covariateId %in% deletedCovariateIds, ])
-   cr$covariateName <- truncRight(as.character(cr$covariateName), 30)
-   cr
+  }
+  cr <- covariateData$covariateRef %>%
+    filter(.data$covariateId %in% deletedCovariateIds, ) %>%
+    collect()
+  cr$covariateName <- truncRight(as.character(cr$covariateName), 30)
+  cr
 }
 ```
 
@@ -402,7 +405,7 @@ covariateData2 <- getDbCovariateData(connectionDetails = connectionDetails,
 summary(covariateData2)
 ```
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))){
+if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))) {
   covariateData2 <- loadCovariateData(file.path(vignetteFolder, "aggregatedCovariates"))
   summary(covariateData2)
 }
@@ -411,12 +414,12 @@ Note that we specified `aggregated = TRUE`. Also, we are no longer required to d
 
 ### Aggregated covariate output format
 
-The two main components of the aggregated `covariateData` object are `covariates` and `covariatesContinuous`, for binary and continous covariates respectively:
+The two main components of the aggregated `covariateData` object are `covariates` and `covariatesContinuous`, for binary and continuous covariates respectively:
 ```{r eval=FALSE}
 covariateData2$covariates
 ```
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))){
+if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))) {
   covariateData2$covariates
 }
 ```
@@ -424,7 +427,7 @@ if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))){
 covariateData2$covariatesContinuous
 ```
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))){
+if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))) {
   covariateData2$covariatesContinuous
 }
 ```
@@ -451,7 +454,7 @@ print(result, row.names = FALSE, right = FALSE)
 \fontsize{6}{6}
 \selectfont
 ```{r comment=NA,echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))){
+if (file.exists(file.path(vignetteFolder, "aggregatedCovariates"))) {
   result <- createTable1(covariateData2)
   print(result, row.names = FALSE, right = FALSE)
 }
@@ -478,7 +481,7 @@ covariateData2b <- getDbCovariateData(connectionDetails = connectionDetails,
 summary(covariateData2b)
 ```
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "table1Covariates"))){
+if (file.exists(file.path(vignetteFolder, "table1Covariates"))) {
   covariateData2b <- loadCovariateData(file.path(vignetteFolder, "table1Covariates"))
   summary(covariateData2b)
 }
@@ -519,17 +522,17 @@ head(std)
 \fontsize{7}{8}
 \selectfont
 ```{r echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "covDiclofenac"))){
+if (file.exists(file.path(vignetteFolder, "covDiclofenac"))) {
   covCelecoxib <- loadCovariateData(file.path(vignetteFolder, "covCelecoxib"))
   covDiclofenac <- loadCovariateData(file.path(vignetteFolder, "covDiclofenac"))
   std <- computeStandardizedDifference(covCelecoxib, covDiclofenac)
   truncRight <- function(x, n) {
     nc <- nchar(x)
-    x[nc > (n-3)] <- paste('...',substr(x[nc > (n-3)], nc[nc > (n-3)]-n+1, nc[nc > (n-3)]),sep="")
+    x[nc > (n - 3)] <- paste('...',substr(x[nc > (n - 3)], nc[nc > (n - 3)] - n + 1, nc[nc > (n - 3)]), sep = "")
     x
-   }
-   std$covariateName <- truncRight(as.character(std$covariateName), 30)
-   head(std)
+  }
+  std$covariateName <- truncRight(as.character(std$covariateName), 30)
+  head(std)
 }
 ```
 \fontsize{10}{12}
@@ -546,7 +549,7 @@ print(result, row.names = FALSE, right = FALSE)
 \fontsize{5}{5}
 \selectfont
 ```{r comment=NA,echo=FALSE,message=FALSE}
-if (file.exists(file.path(vignetteFolder, "covDiclofenac"))){
+if (file.exists(file.path(vignetteFolder, "covDiclofenac"))) {
   result <- createTable1(covCelecoxib, covDiclofenac)
   print(result, row.names = FALSE, right = FALSE)
 }

@@ -1,6 +1,6 @@
 # @file GetHdpsCovariates.R
 #
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2020 Observational Health Data Sciences and Informatics
 #
 # This file is part of FeatureExtraction
 #
@@ -15,6 +15,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+# This has been moved to extras, because it needs to be converted from using ff to used Andromeda.
+
 
 #' Get HDPS covariate information from the database
 #'
@@ -66,7 +70,7 @@ getDbHdpsCovariateData <- function(connection,
     hasExcludedCovariateConceptIds <- TRUE
     DatabaseConnector::insertTable(connection,
                                    tableName = "#excluded_cov",
-                                   data = data.frame(concept_id = as.integer(covariateSettings$excludedCovariateConceptIds)),
+                                   data = tibble(concept_id = as.integer(covariateSettings$excludedCovariateConceptIds)),
                                    dropTableIfExists = TRUE,
                                    createTable = TRUE,
                                    tempTable = TRUE,
@@ -82,7 +86,7 @@ getDbHdpsCovariateData <- function(connection,
     hasIncludedCovariateConceptIds <- TRUE
     DatabaseConnector::insertTable(connection,
                                    tableName = "#included_cov",
-                                   data = data.frame(concept_id = as.integer(covariateSettings$includedCovariateConceptIds)),
+                                   data = tibble(concept_id = as.integer(covariateSettings$includedCovariateConceptIds)),
                                    dropTableIfExists = TRUE,
                                    createTable = TRUE,
                                    tempTable = TRUE,

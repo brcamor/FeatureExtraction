@@ -1,4 +1,4 @@
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2020 Observational Health Data Sciences and Informatics
 #
 # This file is part of FeatureExtraction
 #
@@ -77,7 +77,7 @@ createDetailedTemporalCovariateSettings <- function(analyses = list(),
 #'
 #' @param analysisId                    An integer between 0 and 999 that uniquely identifies this
 #'                                      analysis.
-#' @param sqlFileName                   The name of the paramterized SQL file embedded in the
+#' @param sqlFileName                   The name of the parameterized SQL file embedded in the
 #'                                      \code{featureExtraction} package.
 #' @param parameters                    The list of parameter values used to render the template SQL.
 #' @param includedCovariateConceptIds   A list of concept IDs that should be used to construct

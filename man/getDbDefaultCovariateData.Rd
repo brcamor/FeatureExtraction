@@ -4,11 +4,21 @@
 \alias{getDbDefaultCovariateData}
 \title{Get default covariate information from the database}
 \usage{
-getDbDefaultCovariateData(connection, oracleTempSchema = NULL,
-  cdmDatabaseSchema, cohortTable = "#cohort_person", cohortId = -1,
-  cdmVersion = "5", rowIdField = "subject_id", covariateSettings,
-  targetDatabaseSchema, targetCovariateTable, targetCovariateRefTable,
-  targetAnalysisRefTable, aggregated = FALSE)
+getDbDefaultCovariateData(
+  connection,
+  oracleTempSchema = NULL,
+  cdmDatabaseSchema,
+  cohortTable = "#cohort_person",
+  cohortId = -1,
+  cdmVersion = "5",
+  rowIdField = "subject_id",
+  covariateSettings,
+  targetDatabaseSchema,
+  targetCovariateTable,
+  targetCovariateRefTable,
+  targetAnalysisRefTable,
+  aggregated = FALSE
+)
 }
 \arguments{
 \item{connection}{A connection to the server containing the schema as created using the
@@ -56,15 +66,15 @@ it is a temp table, do not specify \code{targetDatabaseSchema}.}
 cohort entry?}
 }
 \value{
-Returns an object of type \code{covariateData}, containing information on the baseline covariates.
+Returns an object of type \code{CovariateData}, which is an Andromeda object containing information on the baseline covariates.
 Information about multiple outcomes can be captured at once for efficiency reasons. This object is
 a list with the following components: \describe{ \item{covariates}{An ffdf object listing the
 baseline covariates per person in the cohorts. This is done using a sparse representation:
 covariates with a value of 0 are omitted to save space. The covariates object will have three
 columns: rowId, covariateId, and covariateValue. The rowId is usually equal to the person_id,
-unless specified otherwise in the rowIdField argument.} \item{covariateRef}{An ffdf object
-describing the covariates that have been extracted.} \item{metaData}{A list of objects with
-information on how the covariateData object was constructed.} }
+unless specified otherwise in the rowIdField argument.} \item{covariateRef}{A table
+describing the covariates that have been extracted.}  }. The CovariateData object will also have a \code{metaData} attribute, a list of objects with
+information on how the covariateData object was constructed.
 }
 \description{
 Constructs a large default set of covariates for one or more cohorts using data in the CDM schema.

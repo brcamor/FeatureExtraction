@@ -1,4 +1,4 @@
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2020 Observational Health Data Sciences and Informatics
 #
 # This file is part of FeatureExtraction
 #
@@ -26,7 +26,8 @@
 #' @export
 getDefaultTable1Specifications <- function() {
   fileName <- system.file("csv", "Table1Specs.csv", package = "FeatureExtraction")
-  specifications <- read.csv(fileName, stringsAsFactors = FALSE)
+  colTypes <- list(label = readr::col_character(), analysisId = readr::col_integer(), covariateIds = readr::col_character())
+  specifications <- readr::read_csv(fileName, col_types = colTypes, guess_max = )
   return(specifications)
 }
 
@@ -42,9 +43,11 @@ getDefaultTable1Specifications <- function() {
 #' @param specifications   Specifications of which covariates to display, and how.
 #' @param output           The output format for the table. Options are \code{output = "two columns"},
 #'                         \code{output = "one column"}, or \code{output = "list"}.
+#' @param showCounts       Show the number of cohort entries having the binary covariate?
+#' @param showPercent      Show the percentage of cohort entries having the binary covariate?
 #' @param percentDigits    Number of digits to be used for percentages.
 #' @param stdDiffDigits    Number of digits to be used for the standardized differences.
-#' @param valueDigits    Number of digits to be used for the values of continuous variables.
+#' @param valueDigits      Number of digits to be used for the values of continuous variables.
 #' 
 #' @return
 #' A data frame, or, when \code{output = "list"} a list of two data frames.
@@ -54,22 +57,22 @@ createTable1 <- function(covariateData1,
                          covariateData2 = NULL,
                          specifications = getDefaultTable1Specifications(),
                          output = "two columns",
+                         showCounts = FALSE,
+                         showPercent = TRUE,
                          percentDigits = 1,
                          valueDigits = 1,
                          stdDiffDigits = 2) {
   comparison <- !is.null(covariateData2)
-  if (!is(covariateData1, "covariateData")) {
+  if (!isCovariateData(covariateData1))
     stop("covariateData1 is not of type 'covariateData'")
-  }
-  if (comparison && !is(covariateData2, "covariateData")) {
+  if (comparison && !isCovariateData(covariateData1))
     stop("covariateData2 is not of type 'covariateData'")
-  }
-  if (is.null(covariateData1$covariatesContinuous) && is.null(covariateData1$covariates$averageValue)) {
+  if (!isAggregatedCovariateData(covariateData1))
     stop("Covariate1 data is not aggregated")
-  }
-  if (comparison && is.null(covariateData2$covariatesContinuous) && is.null(covariateData2$covariates$averageValue)) {
+  if (comparison && !isAggregatedCovariateData(covariateData2))
     stop("Covariate2 data is not aggregated")
-  }
+  if (!showCounts && !showPercent)
+    stop("Must show counts or percent, or both")
   
   fixCase <- function(label) {
     idx <- (toupper(label) == label)
@@ -78,6 +81,13 @@ createTable1 <- function(covariateData1,
                            tolower(substr(label[idx], 2, nchar(label[idx]))))
     }
     return(label)
+  }
+  
+  formatCount <- function(x) {
+    result <- format(round(x), justify = "right", big.mark = ",")
+    result <- gsub("NA", "", result)
+    result <- gsub(" ", " ", result)
+    return(result)
   }
   
   formatPercent <- function(x) {
@@ -101,29 +111,27 @@ createTable1 <- function(covariateData1,
   if (is.null(covariateData1$covariates)) {
     covariates <- NULL
   } else {
-    covariates <- as.data.frame(ff::as.ram(covariateData1$covariates[, c("covariateId", "averageValue")]))
-    colnames(covariates) <- c("covariateId", "value1")
-    covariates$value1 <- formatPercent(covariates$value1)
+    covariates <- covariateData1$covariates %>% 
+      select(covariateId = "covariateId", 
+             count1 = "sumValue", 
+             percent1 = "averageValue") %>%
+      collect()
+    covariates$count1 <- formatCount(covariates$count1)
+    covariates$percent1 <- formatPercent(covariates$percent1)
   }
   if (is.null(covariateData1$covariatesContinuous)) {
     covariatesContinuous <- NULL
   } else {
-    covariatesContinuous <- as.data.frame(ff::as.ram(covariateData1$covariatesContinuous[, c("covariateId",
-                                                                                             "averageValue",
-                                                                                             "standardDeviation",
-                                                                                             "minValue",
-                                                                                             "p25Value",
-                                                                                             "medianValue",
-                                                                                             "p75Value",
-                                                                                             "maxValue")]))
-    colnames(covariatesContinuous) <- c("covariateId",
-                                        "averageValue1",
-                                        "standardDeviation1",
-                                        "minValue1",
-                                        "p25Value1",
-                                        "medianValue1",
-                                        "p75Value1",
-                                        "maxValue1")
+    covariatesContinuous <- covariateData1$covariatesContinuous %>% 
+      select(covariateId = "covariateId",
+             averageValue1 = "averageValue",
+             standardDeviation1 = "standardDeviation",
+             minValue1 = "minValue",
+             p25Value1 = "p25Value",
+             medianValue1 = "medianValue",
+             p75Value1 = "p75Value",
+             maxValue1 = "maxValue") %>%
+      collect()
     covariatesContinuous$averageValue1 <- formatValue(covariatesContinuous$averageValue1)
     covariatesContinuous$standardDeviation1 <- formatValue(covariatesContinuous$standardDeviation1)
     covariatesContinuous$minValue1 <- formatValue(covariatesContinuous$minValue1)
@@ -133,37 +141,40 @@ createTable1 <- function(covariateData1,
     covariatesContinuous$maxValue1 <- formatValue(covariatesContinuous$maxValue1)
   }
   
-  covariateRef <- ff::as.ram(covariateData1$covariateRef)
-  analysisRef <- ff::as.ram(covariateData1$analysisRef)
+  covariateRef <- covariateData1$covariateRef %>%
+    collect()
+  analysisRef <- covariateData1$analysisRef %>%
+    collect()
   if (comparison) {
     stdDiff <- computeStandardizedDifference(covariateData1, covariateData2)
     if (!is.null(covariateData1$covariates) && !is.null(covariateData2$covariates)) {
-      tempCovariates <- ff::as.ram(covariateData2$covariates[, c("covariateId", "averageValue")])
-      colnames(tempCovariates) <- c("covariateId", "value2")
-      tempCovariates$value2 <- formatPercent(tempCovariates$value2)
+      tempCovariates <- covariateData2$covariates %>%
+        select(covariateId = "covariateId", 
+               count2 = "sumValue", 
+               percent2 = "averageValue") %>%
+        collect()
+      tempCovariates$count2 <- formatCount(tempCovariates$count2)
+      tempCovariates$percent2 <- formatPercent(tempCovariates$percent2)
       covariates <- merge(covariates, tempCovariates, all = TRUE)
-      covariates$value1[is.na(covariates$value1)] <- " 0"
-      covariates$value2[is.na(covariates$value2)] <- " 0"
+      covariates$count1[is.na(covariates$count1)] <- " 0"
+      covariates$count2[is.na(covariates$count2)] <- " 0"
+      covariates$percent1[is.na(covariates$percent1)] <- " 0"
+      covariates$percent2[is.na(covariates$percent2)] <- " 0"
       covariates <- merge(covariates, stdDiff[, c("covariateId", "stdDiff")])
       covariates$stdDiff <- formatStdDiff(covariates$stdDiff)
     }
     if (!is.null(covariatesContinuous)) {
-      tempCovariates <- as.data.frame(ff::as.ram(covariateData2$covariatesContinuous[, c("covariateId",
-                                                                                         "averageValue",
-                                                                                         "standardDeviation",
-                                                                                         "minValue",
-                                                                                         "p25Value",
-                                                                                         "medianValue",
-                                                                                         "p75Value",
-                                                                                         "maxValue")]))
-      colnames(tempCovariates) <- c("covariateId",
-                                    "averageValue2",
-                                    "standardDeviation2",
-                                    "minValue2",
-                                    "p25Value2",
-                                    "medianValue2",
-                                    "p75Value2",
-                                    "maxValue2")
+      tempCovariates <- covariateData2$covariatesContinuous %>% 
+        select(covariateId = "covariateId",
+               averageValue2 = "averageValue",
+               standardDeviation2 = "standardDeviation",
+               minValue2 = "minValue",
+               p25Value2 = "p25Value",
+               medianValue2 = "medianValue",
+               p75Value2 = "p75Value",
+               maxValue2 = "maxValue") %>%
+        collect()
+      
       tempCovariates$averageValue2 <- formatValue(tempCovariates$averageValue2)
       tempCovariates$standardDeviation2 <- formatValue(tempCovariates$standardDeviation2)
       tempCovariates$minValue2 <- formatValue(tempCovariates$minValue2)
@@ -189,13 +200,10 @@ createTable1 <- function(covariateData1,
       covariatesContinuous <- merge(covariatesContinuous, stdDiff[, c("covariateId", "stdDiff")])
       covariatesContinuous$stdDiff <- formatStdDiff(covariatesContinuous$stdDiff)
     }
-    idx <- !ffbase::`%in%`(covariateData2$covariateRef$covariateId,
-                           covariateData1$covariateRef$covariateId)
-    if (ffbase::any.ff(idx)) {
-      covariateRef <- rbind(covariateRef, ff::as.ram(covariateData2$covariateRef[idx, ]))
-    }
+    covariateRef <- unique(bind_rows(covariateRef, collect(covariateData2$covariateRef)))
   } else {
-    covariates$value2 <- " 0"
+    covariates$count2 <- " 0"
+    covariates$percent2 <- " 0"
     covariates$stdDiff <- " 0"
     covariatesContinuous$averageValue2 <- "  "
     covariatesContinuous$standardDeviation2 <- "  "
@@ -207,12 +215,12 @@ createTable1 <- function(covariateData1,
     covariatesContinuous$stdDiff <- "  "
   }
   
-  binaryTable <- data.frame()
-  continuousTable <- data.frame()
+  binaryTable <- tibble()
+  continuousTable <- tibble()
   for (i in 1:nrow(specifications)) {
-    if (specifications$analysisId[i] == "") {
-      binaryTable <- rbind(binaryTable,
-                           data.frame(Characteristic = specifications$label[i], value = ""))
+    if (is.na(specifications$analysisId[i])) {
+      binaryTable <- bind_rows(binaryTable,
+                               tibble(Characteristic = specifications$label[i], value = ""))
     } else {
       idx <- analysisRef$analysisId == specifications$analysisId[i]
       if (any(idx)) {
@@ -220,7 +228,7 @@ createTable1 <- function(covariateData1,
         covariateIds <- NULL
         if (isBinary == "Y") {
           # Binary
-          if (specifications$covariateIds[i] == "") {
+          if (is.na(specifications$covariateIds[i])) {
             idx <- covariateRef$analysisId == specifications$analysisId[i]
           } else {
             covariateIds <- as.numeric(strsplit(specifications$covariateIds[i], ",")[[1]])
@@ -232,37 +240,40 @@ createTable1 <- function(covariateData1,
             if (is.null(covariateIds)) {
               covariatesSubset <- covariatesSubset[order(covariatesSubset$covariateId), ]
             } else {
-              covariatesSubset <- merge(covariatesSubset, data.frame(covariateId = covariateIds,
-                                                                     rn = 1:length(covariateIds)))
+              covariatesSubset <- merge(covariatesSubset, tibble(covariateId = covariateIds,
+                                                                 rn = 1:length(covariateIds)))
               covariatesSubset <- covariatesSubset[order(covariatesSubset$rn,
                                                          covariatesSubset$covariateId), ]
             }
             covariatesSubset$covariateName <- fixCase(gsub("^.*: ",
                                                            "",
                                                            covariatesSubset$covariateName))
-            if (specifications$covariateIds[i] == "" || length(covariateIds) > 1) {
-              binaryTable <- rbind(binaryTable, data.frame(Characteristic = specifications$label[i],
-                                                           value1 = "",
-                                                           value2 = "",
-                                                           stdDiff = "",
-                                                           stringsAsFactors = FALSE))
-              binaryTable <- rbind(binaryTable,
-                                   data.frame(Characteristic = paste0("  ", covariatesSubset$covariateName),
-                                              value1 = covariatesSubset$value1,
-                                              value2 = covariatesSubset$value2,
-                                              stdDiff = covariatesSubset$stdDiff,
-                                              stringsAsFactors = FALSE))
+            if (is.na(specifications$covariateIds[i]) || length(covariateIds) > 1) {
+              binaryTable <- bind_rows(binaryTable, tibble(Characteristic = specifications$label[i],
+                                                           count1 = "",
+                                                           percent1 = "",
+                                                           count2 = "",
+                                                           percent2 = "",
+                                                           stdDiff = ""))
+              binaryTable <- bind_rows(binaryTable,
+                                       tibble(Characteristic = paste0("  ", covariatesSubset$covariateName),
+                                              count1 = covariatesSubset$count1,
+                                              percent1 = covariatesSubset$percent1,
+                                              count2 = covariatesSubset$count2,
+                                              percent2 = covariatesSubset$percent2,
+                                              stdDiff = covariatesSubset$stdDiff))
             } else {
-              binaryTable <- rbind(binaryTable, data.frame(Characteristic = specifications$label[i],
-                                                           value1 = covariatesSubset$value1,
-                                                           value2 = covariatesSubset$value2,
-                                                           stdDiff = covariatesSubset$stdDiff,
-                                                           stringsAsFactors = FALSE))
+              binaryTable <- bind_rows(binaryTable, tibble(Characteristic = specifications$label[i],
+                                                           count1 = covariatesSubset$count1,
+                                                           percent1 = covariatesSubset$percent1,
+                                                           count2 = covariatesSubset$count2,
+                                                           percent2 = covariatesSubset$percent2,
+                                                           stdDiff = covariatesSubset$stdDiff))
             }
           }
         } else {
           # Not binary
-          if (specifications$covariateIds[i] == "") {
+          if (is.na(specifications$covariateIds[i])) {
             idx <- covariateRef$analysisId == specifications$analysisId[i]
           } else {
             covariateIds <- as.numeric(strsplit(specifications$covariateIds[i], ",")[[1]])
@@ -275,29 +286,27 @@ createTable1 <- function(covariateData1,
             if (is.null(covariateIds)) {
               covariatesSubset <- covariatesSubset[order(covariatesSubset$covariateId), ]
             } else {
-              covariatesSubset <- merge(covariatesSubset, data.frame(covariateId = covariateIds,
-                                                                     rn = 1:length(covariateIds)))
+              covariatesSubset <- merge(covariatesSubset, tibble(covariateId = covariateIds,
+                                                                 rn = 1:length(covariateIds)))
               covariatesSubset <- covariatesSubset[order(covariatesSubset$rn,
                                                          covariatesSubset$covariateId), ]
             }
             covariatesSubset$covariateName <- fixCase(gsub("^.*: ",
                                                            "",
                                                            covariatesSubset$covariateName))
-            if (specifications$covariateIds[i] == "" || length(covariateIds) > 1) {
-              continuousTable <- rbind(continuousTable,
-                                       data.frame(Characteristic = specifications$label[i],
+            if (is.na(specifications$covariateIds[i]) || length(covariateIds) > 1) {
+              continuousTable <- bind_rows(continuousTable,
+                                           tibble(Characteristic = specifications$label[i],
                                                   value1 = "",
                                                   value2 = "",
-                                                  stdDiff = "",
-                                                  stringsAsFactors = FALSE))
+                                                  stdDiff = ""))
               for (j in 1:nrow(covariatesSubset)) {
-                continuousTable <- rbind(continuousTable,
-                                         data.frame(Characteristic = paste0("  ", covariatesSubset$covariateName[j]),
+                continuousTable <- bind_rows(continuousTable,
+                                             tibble(Characteristic = paste0("  ", covariatesSubset$covariateName[j]),
                                                     value1 = "",
                                                     value2 = "",
-                                                    stdDiff = "",
-                                                    stringsAsFactors = FALSE))
-                continuousTable <- rbind(continuousTable, data.frame(Characteristic = c("    Mean",
+                                                    stdDiff = ""))
+                continuousTable <- bind_rows(continuousTable, tibble(Characteristic = c("    Mean",
                                                                                         "    Std. deviation",
                                                                                         "    Minimum",
                                                                                         "    25th percentile",
@@ -324,18 +333,16 @@ createTable1 <- function(covariateData1,
                                                                                  "  ",
                                                                                  "  ",
                                                                                  "  ",
-                                                                                 "  "),
-                                                                     stringsAsFactors = FALSE))
+                                                                                 "  ")))
                 
               }
             } else {
-              continuousTable <- rbind(continuousTable,
-                                       data.frame(Characteristic = specifications$label[i],
+              continuousTable <- bind_rows(continuousTable,
+                                           tibble(Characteristic = specifications$label[i],
                                                   value1 = "",
                                                   value2 = "",
-                                                  stdDiff = "",
-                                                  stringsAsFactors = FALSE))
-              continuousTable <- rbind(continuousTable, data.frame(Characteristic = c("    Mean",
+                                                  stdDiff = ""))
+              continuousTable <- bind_rows(continuousTable, tibble(Characteristic = c("    Mean",
                                                                                       "    Std. deviation",
                                                                                       "    Minimum",
                                                                                       "    25th percentile",
@@ -362,41 +369,71 @@ createTable1 <- function(covariateData1,
                                                                                "  ",
                                                                                "  ",
                                                                                "  ",
-                                                                               "  "),
-                                                                   stringsAsFactors = FALSE))
+                                                                               "  ")))
             }
           }
         }
       }
     }
   }
-  if (comparison) {
-    if (nrow(binaryTable) != 0) {
+  if (nrow(continuousTable) != 0) {
+    if (showCounts && showPercent) {
+      if (comparison) {
+        continuousTable$dummy1 <- ""
+        continuousTable$dummy2 <- ""
+        continuousTable <- continuousTable[, c(1, 5, 2, 6, 3, 4)]
+        colnames(continuousTable) <- c("Characteristic", "", "Value", "", "Value", "Std.Diff")
+      } else {
+        continuousTable$dummy <- ""
+        continuousTable <- continuousTable[, c(1,3,2)]
+        colnames(continuousTable) <- c("Characteristic", "", "Value")
+      }
+    } else {
+      if (comparison) {
+        colnames(continuousTable) <- c("Characteristic", "Value", "Value", "Std.Diff")
+      }  else {
+        continuousTable$value2 <- NULL
+        continuousTable$stdDiff <- NULL
+        colnames(continuousTable) <- c("Characteristic", "Value")
+      }
+    }
+  }
+  
+  if (nrow(binaryTable) != 0) {
+    if (comparison) {
       colnames(binaryTable) <- c("Characteristic",
+                                 "Count",
                                  paste0("% (n = ",
-                                        format(covariateData1$metaData$populationSize, big.mark = ","),
+                                        formatCount(attr(covariateData1, "metaData")$populationSize),
                                         ")"),
+                                 "Count",
                                  paste0("% (n = ",
-                                        format(covariateData2$metaData$populationSize, big.mark = ","),
+                                        formatCount(attr(covariateData2, "metaData")$populationSize),
                                         ")"),
                                  "Std.Diff")
-    }
-    if (nrow(continuousTable) != 0) {
-      colnames(continuousTable) <- c("Characteristic", "Value", "Value", "Std.Diff")
-    }
-  } else {
-    if (nrow(binaryTable) != 0) {
-      binaryTable$value2 <- NULL
+      if (!showCounts) {
+        binaryTable[, 4] <- NULL
+        binaryTable[, 2] <- NULL
+      }
+      if (!showPercent) {
+        binaryTable[, 5] <- NULL
+        binaryTable[, 3] <- NULL
+      }
+    } else {
+      binaryTable$count2 <- NULL
+      binaryTable$percent2 <- NULL
       binaryTable$stdDiff <- NULL
       colnames(binaryTable) <- c("Characteristic",
+                                 "Count",
                                  paste0("% (n = ",
-                                        format(covariateData1$metaData$populationSize, big.mark = ","),
+                                        formatCount(attr(covariateData1, "metaData")$populationSize),
                                         ")"))
-    }
-    if (nrow(continuousTable) != 0) {
-      continuousTable$value2 <- NULL
-      continuousTable$stdDiff <- NULL
-      colnames(continuousTable) <- c("Characteristic", "Value")
+      if (!showCounts) {
+        binaryTable[, 2] <- NULL
+      }
+      if (!showPercent) {
+        binaryTable[, 3] <- NULL
+      }
     }
   }
   
@@ -407,8 +444,7 @@ createTable1 <- function(covariateData1,
         column1 <- binaryTable[1:rowsPerColumn, ]
         ct <- continuousTable
         colnames(ct) <- colnames(binaryTable)
-        column2 <- rbind(binaryTable[(rowsPerColumn + 1):nrow(binaryTable),
-                                     ],
+        column2 <- rbind(binaryTable[(rowsPerColumn + 1):nrow(binaryTable), ],
                          rep("", ncol(binaryTable)),
                          colnames(continuousTable),
                          ct)
@@ -473,7 +509,7 @@ createTable1CovariateSettings <- function(specifications = getDefaultTable1Speci
   filterBySpecs <- function(analysis) {
     if (analysis$analysisId %in% specifications$analysisId) {
       covariateIds <- specifications$covariateIds[specifications$analysisId == analysis$analysisId]
-      if (!any(covariateIds == "")) {
+      if (!any(is.na(covariateIds))) {
         covariateIds <- as.numeric(unlist(strsplit(covariateIds, ",")))
         analysis$includedCovariateIds <- covariateIds
       }

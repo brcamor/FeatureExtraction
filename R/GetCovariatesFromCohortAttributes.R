@@ -1,6 +1,4 @@
-# @file GetCovariatesFromCohortAttributes.R
-#
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2020 Observational Health Data Sciences and Informatics
 #
 # This file is part of FeatureExtraction
 #
@@ -70,9 +68,7 @@ getDbCohortAttrCovariatesData <- function(connection,
                                                    cohort_attribute_table = covariateSettings$cohortAttrTable,
                                                    has_include_attr_ids = hasIncludeAttrIds)
   
-  covariates <- DatabaseConnector::querySql.ffdf(connection, renderedSql)
-  colnames(covariates) <- SqlRender::snakeCaseToCamelCase(colnames(covariates))
-  
+  covariates <- DatabaseConnector::querySql(connection, renderedSql, snakeCaseToCamelCase = TRUE)  
   covariateRefSql <- "SELECT attribute_definition_id AS covariate_id, attribute_name AS covariate_name FROM @attr_database_schema.@attr_definition_table ORDER BY attribute_definition_id"
   covariateRefSql <- SqlRender::render(covariateRefSql,
                                        attr_database_schema = covariateSettings$attrDatabaseSchema,
@@ -80,27 +76,26 @@ getDbCohortAttrCovariatesData <- function(connection,
   covariateRefSql <- SqlRender::translate(sql = covariateRefSql,
                                           targetDialect = attr(connection, "dbms"),
                                           oracleTempSchema = oracleTempSchema)
-  covariateRef <- DatabaseConnector::querySql.ffdf(connection, covariateRefSql)
-  colnames(covariateRef) <- SqlRender::snakeCaseToCamelCase(colnames(covariateRef))
-  covariateRef$analysisId <- ff::ff(as.numeric(covariateSettings$analysisId), length = nrow(covariateRef))
-  covariateRef$conceptId <- ff::ff(0, length = nrow(covariateRef))
+  covariateRef <- DatabaseConnector::querySql(connection, covariateRefSql, snakeCaseToCamelCase = TRUE)
+  covariateRef$analysisId <- rep(as.numeric(covariateSettings$analysisId), length = nrow(covariateRef))
+  covariateRef$conceptId <- rep(0, length = nrow(covariateRef))
   
   analysisRef <- data.frame(analysisId = as.numeric(covariateSettings$analysisId),
                             analysisName = "Covariates from cohort attributes",
                             domainId = "Cohort",
                             startDay = as.numeric(NA),
                             endDay = as.numeric(NA),
-                            isBinary = if(covariateSettings$isBinary){"Y"} else {"N"},
-                            missingMeansZero = if(covariateSettings$missingMeansZero){"Y"} else {"N"})
-  analysisRef <- ff::as.ffdf(analysisRef)
+                            isBinary = if (covariateSettings$isBinary) {"Y"} else {"N"},
+                            missingMeansZero = if (covariateSettings$missingMeansZero) {"Y"} else {"N"})
   delta <- Sys.time() - start
   writeLines(paste("Loading took", signif(delta, 3), attr(delta, "units")))
   
-  result <- list(covariates = covariates, 
-                 covariateRef = covariateRef, 
-                 analysisRef = analysisRef,
-                 metaData = list())
-  class(result) <- "covariateData"
+  result <- Andromeda::andromeda(covariates = covariates, 
+                                 covariateRef = covariateRef, 
+                                 analysisRef = analysisRef)
+  attr(result, "metaData") <- list()
+  class(result) <- "CovariateData"
+  attr(class(result), "package") <- "FeatureExtraction"
   return(result)
 }
 

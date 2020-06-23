@@ -1,3 +1,21 @@
+FeatureExtraction 3.0.0
+=======================
+
+Changes:
+
+1. Switching from ff to Andromeda for storage of large data objects.
+
+2. Adding option to createTable1 to (also) show absolute counts.
+
+3. For analyses that restrict to inpatient diagnoses, the string '(inpatient)' is now appended to the covariate name.
+
+Bugfixes: 
+
+1. Dropping spurious 'analysis_name' field in temporary covariate reference table.
+
+2. Fixed covariate name of age groups over 100 years old. 
+
+
 FeatureExtraction 2.2.5
 =======================
 
@@ -20,7 +38,7 @@ FeatureExtraction 2.2.4
 
 Bugfixes:
 
-1. Removing redundant covariates now precedes removing infrequent covariates when calling tidyCovariates. Anlyses where the most prevalent (redundant) covariate was removed are now exempt from removal of infrequent covariates.
+1. Removing redundant covariates now precedes removing infrequent covariates when calling tidyCovariates. Analyses where the most prevalent (redundant) covariate was removed are now exempt from removal of infrequent covariates.
 
 2. Fixed some typos in the vignette
 

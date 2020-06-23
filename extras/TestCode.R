@@ -1,5 +1,13 @@
 library(FeatureExtraction)
-options(fftempdir = "s:/FFtemp")
+
+# For debugging purposes. This shouldn't be needed in real use:
+options(andromedaTempFolder = "s:/andromedaTemp")
+library(Andromeda)
+
+# For debugging of new ParallelLogger:
+ParallelLogger::addDefaultErrorReportLogger()
+
+# options(fftempdir = "c:/FFtemp")
 # setwd("s:/temp/pgProfile/")
 
 # Pdw ---------------------------------------------------------------------
@@ -13,7 +21,7 @@ connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
                                                                 user = user,
                                                                 password = pw,
                                                                 port = port)
-cdmDatabaseSchema <- "cdm_truven_mdcr_v609.dbo"
+cdmDatabaseSchema <- "CDM_IBM_MDCR_V1192.dbo"
 cohortDatabaseSchema <- "scratch.dbo"
 cohortTable <- "ohdsi_celecoxib_prediction"
 oracleTempSchema <- NULL
@@ -64,7 +72,7 @@ sql <- "IF OBJECT_ID('@cohort_database_schema.@cohort_table', 'U') IS NOT NULL
 DROP TABLE @cohort_database_schema.@cohort_table;
 SELECT 1 AS cohort_definition_id, person_id AS subject_id, drug_era_start_date AS cohort_start_date, drug_era_end_date AS cohort_end_date, ROW_NUMBER() OVER (ORDER BY person_id, drug_era_start_date) AS row_id
 INTO @cohort_database_schema.@cohort_table FROM @cdm_database_schema.drug_era 
-WHERE drug_concept_id = 945286;"
+WHERE drug_concept_id = 1118084;"
 sql <- SqlRender::render(sql, 
                             cdm_database_schema = cdmDatabaseSchema,
                             cohort_database_schema = cohortDatabaseSchema,
@@ -85,8 +93,8 @@ DatabaseConnector::disconnect(conn)
 celecoxibDrugs <- 1118084
 # x <- c(252351201, 2514584502, 2615790602, 440424201, 2212134701, 433950202, 40163038301, 42902283302, 380411101, 19115253302, 141508101, 2109262501, 440870101, 40175400301, 2212420701, 253321102, 2616540601, 40490966204, 198249204, 19003087302, 77069102, 259848101, 1201620402, 19035388301, 444084201, 2617130602, 40223423301, 4184252201, 2212996701, 40234152302, 19125485301, 21602471403, 4060101801, 442313204, 439502101, 1326303402, 440920202, 19040158302, 2414379501, 2313884502, 4204187204, 2721698801, 739209301, 376225102, 42742566701, 43021157201, 314131101, 2005962502, 133298201, 4157607204)
 settings <- createCovariateSettings(useDemographicsGender = FALSE,
-                                    useDemographicsAge = TRUE,
-                                    useDemographicsAgeGroup = FALSE,
+                                    useDemographicsAge = FALSE,
+                                    useDemographicsAgeGroup = TRUE,
                                     useDemographicsRace = FALSE,
                                     useDemographicsEthnicity = FALSE,
                                     useDemographicsIndexYear = FALSE,
@@ -107,15 +115,16 @@ settings <- createCovariateSettings(useDemographicsGender = FALSE,
                                     useConditionEraStartMediumTerm = FALSE,
                                     useConditionEraStartShortTerm = FALSE,
                                     useConditionGroupEraAnyTimePrior = FALSE,
-                                    useConditionGroupEraLongTerm = TRUE,
+                                    useConditionGroupEraLongTerm = FALSE,
                                     useConditionGroupEraMediumTerm = FALSE,
                                     useConditionGroupEraShortTerm = FALSE,
                                     useConditionGroupEraOverlapping = FALSE,
                                     useConditionGroupEraStartLongTerm = FALSE,
                                     useConditionGroupEraStartMediumTerm = FALSE,
                                     useConditionGroupEraStartShortTerm = FALSE,
+                                    useConditionOccurrencePrimaryInpatientLongTerm = FALSE,
                                     useDrugExposureAnyTimePrior = FALSE,
-                                    useDrugExposureLongTerm = TRUE,
+                                    useDrugExposureLongTerm = FALSE,
                                     useDrugExposureMediumTerm = FALSE,
                                     useDrugExposureShortTerm = FALSE,
                                     useDrugEraAnyTimePrior = FALSE,
@@ -127,9 +136,9 @@ settings <- createCovariateSettings(useDemographicsGender = FALSE,
                                     useDrugEraStartMediumTerm = FALSE,
                                     useDrugEraStartShortTerm = FALSE,
                                     useDrugGroupEraAnyTimePrior = FALSE,
-                                    useDrugGroupEraLongTerm = TRUE,
+                                    useDrugGroupEraLongTerm = FALSE,
                                     useDrugGroupEraMediumTerm = FALSE,
-                                    useDrugGroupEraShortTerm = TRUE,
+                                    useDrugGroupEraShortTerm = FALSE,
                                     useDrugGroupEraOverlapping = FALSE,
                                     useDrugGroupEraStartLongTerm = FALSE,
                                     useDrugGroupEraStartMediumTerm = FALSE,
@@ -183,14 +192,11 @@ settings <- createCovariateSettings(useDemographicsGender = FALSE,
                                     endDays = 0,
                                     includedCovariateConceptIds = c(),
                                     addDescendantsToInclude = FALSE,
-                                    excludedCovariateConceptIds = c(312327),
-                                    addDescendantsToExclude = TRUE,
+                                    excludedCovariateConceptIds = c(),
+                                    addDescendantsToExclude = FALSE,
                                     includedCovariateIds = c())
 
-settings <- createDefaultCovariateSettings(excludedCovariateConceptIds = 312327,
-                                           addDescendantsToExclude = FALSE)
 
-# covariateSettings <- convertPrespecSettingsToDetailedSettings(covariateSettings)
 covs <- getDbCovariateData(connectionDetails = connectionDetails,
                            oracleTempSchema = oracleTempSchema,
                            cdmDatabaseSchema = cdmDatabaseSchema,
@@ -200,40 +206,44 @@ covs <- getDbCovariateData(connectionDetails = connectionDetails,
                            rowIdField = "row_id",
                            cohortTableIsTemp = FALSE,
                            covariateSettings = settings,
-                           aggregated = FALSE)
-
-`covs$covariates[covs$covariates$covariateId == 4329847210, ]
+                           aggregated = TRUE)
+covs$covariateRef %>%
+  filter(covariateId > 15000)
+covs$covariates[covs$covariates$covariateId == 4329847210, ]
 # Exclude: sum = 2.883000e+03
 # Not exclude: sum = 2.883000e+03
 # Exclude after fix: sum = 2.538000e+03
-saveCovariateData(covs, "c:/temp/covs2")
-
+system.time(
+saveCovariateData(covs, "s:/temp/covsHuge.zip")
+)
 saveCovariateData(covs, "s:/temp/covsAgg")
-covariateData <- loadCovariateData("c:/temp/covsPp")
-covs <- loadCovariateData("s:/temp/covsAgg")
+covariateData <- loadCovariateData("s:/temp/covsHuge.zip")
+covariateData
+print(covariateData)
+summary(covariateData)
+tidyCovs <- tidyCovariateData(covariateData)
+
+tempCovariateData <- loadCovariateData("c:/temp/covs2.zip")
+
 
 covs2 <- aggregateCovariates(covs)
 
-covariates1 <- ff::as.ram(covs$covariates)
-covariates2 <- ff::as.ram(covs2$covariates)
-covariates1 <- covariates1[order(covariates1$covariateId), ]
-covariates2 <- covariates2[order(covariates2$covariateId), ]
-row.names(covariates1) <- NULL
-row.names(covariates2) <- NULL
-testthat::expect_equal(covariates1, covariates2)
 
-covariates1 <- ff::as.ram(covs$covariatesContinuous)
-covariates2 <- ff::as.ram(covs2$covariatesContinuous)
-covariates1 <- covariates1[order(covariates1$covariateId), ]
-covariates2 <- covariates2[order(covariates2$covariateId), ]
-row.names(covariates1) <- NULL
-row.names(covariates2) <- NULL
-covariates1 <- covariates1[covariates1$countValue > 3,]
-covariates2 <- covariates1[covariates1$countValue > 3,]
-testthat::expect_equal(covariates1, covariates2, tolerance = 0.01)
-head(covariates1)
-head(covariates2)
 
+settings2 <- createCovariateSettings(useDemographicsGender = TRUE)
+covs <- getDbCovariateData(connectionDetails = connectionDetails,
+                           oracleTempSchema = oracleTempSchema,
+                           cdmDatabaseSchema = cdmDatabaseSchema,
+                           cohortDatabaseSchema = cohortDatabaseSchema,
+                           cohortTable = cohortTable,
+                           cohortId = 1,
+                           rowIdField = "row_id",
+                           cohortTableIsTemp = FALSE,
+                           covariateSettings = list(settings, settings2),
+                           aggregated = TRUE)
+print(covs)
+summary(covs)
+print(covs$covariateRef, n = 100)
 # Temporal covariates -----------------------------------------------
 covariateSettings <- createTemporalCovariateSettings(useDemographicsGender = TRUE,
                                                      useMeasurementValue = TRUE)
@@ -248,8 +258,54 @@ covs <- getDbCovariateData(connectionDetails = connectionDetails,
                            covariateSettings = covariateSettings,
                            aggregated = FALSE)
 saveCovariateData(covs, "c:/temp/tempCovs")
-covs <- loadCovariateData("c:/temp/tempCovs")
-tidyCovs <- tidyCovariateData(covs)
+covariateData <- loadCovariateData("c:/temp/tempCovs")
+tidyCovs <- tidyCovariateData(covariateData)
+
+saveCovariateData(tidyCovs, "c:/temp/tidyCovs.zip")
+
+
+# Aggregation ---------------------------------------------------------------------------------
+covariateSettings <- createCovariateSettings(useDemographicsAge = TRUE,
+                                             useDemographicsGender = TRUE)
+
+covs <- getDbCovariateData(connectionDetails = connectionDetails,
+                           oracleTempSchema = oracleTempSchema,
+                           cdmDatabaseSchema = cdmDatabaseSchema,
+                           cohortDatabaseSchema = cohortDatabaseSchema,
+                           cohortTable = cohortTable,
+                           cohortId = 1,
+                           rowIdField = "row_id",
+                           cohortTableIsTemp = FALSE,
+                           covariateSettings = covariateSettings,
+                           aggregated = FALSE)
+
+saveCovariateData(covs, "c:/temp/unaggregatedCovs.zip")
+
+aggCovs <- getDbCovariateData(connectionDetails = connectionDetails,
+                               oracleTempSchema = oracleTempSchema,
+                               cdmDatabaseSchema = cdmDatabaseSchema,
+                               cohortDatabaseSchema = cohortDatabaseSchema,
+                               cohortTable = cohortTable,
+                               cohortId = 1,
+                               rowIdField = "row_id",
+                               cohortTableIsTemp = FALSE,
+                               covariateSettings = covariateSettings,
+                               aggregated = TRUE)
+saveCovariateData(aggCovs, "c:/temp/aggregatedCovs.zip")
+
+
+covariateData <- loadCovariateData("c:/temp/unaggregatedCovs.zip")
+aggCovs2 <- aggregateCovariates(covariateData)
+
+aggCovs <- loadCovariateData("c:/temp/aggregatedCovs.zip")
+
+
+
+aggCovs$covariates %>% collect()
+aggCovs2$covariates %>% collect()
+
+aggCovs$covariatesContinuous %>% collect()
+aggCovs2$covariatesContinuous %>% collect()
 
 
 # Storing data on server -----------------------------------------------------------------------
@@ -364,13 +420,18 @@ covs <- getDbCovariateData(connectionDetails = connectionDetails,
                            covariateSettings = settings,
                            aggregated = TRUE)
 
-saveCovariateData(covs, "s:/temp/covsTable1Medium")
-covariateData <- covs
-covariateData <- loadCovariateData("s:/temp/covsTable1Medium")
+saveCovariateData(covs, "c:/temp/covsTable1")
 
-tables <- createTable1(covs)
-write.csv(tables$part1, "s:/temp/table1Part1.csv", row.names = FALSE)
-write.csv(tables$part2, "s:/temp/table1Part2.csv", row.names = FALSE)
+covariateData1 <- loadCovariateData("c:/temp/covsTable1")
+
+tables <- createTable1(covariateData1, output = "one column", showCounts = T, showPercent = F)
+tables <- createTable1(covariateData1, output = "two columns", showCounts = T, showPercent = F)
+
+tables <- createTable1(covariateData1, covariateData1, output = "one column", showCounts = F, showPercent = T)
+tables <- createTable1(covariateData1, covariateData1, output = "two columns", showCounts = T, showPercent = F)
+
+write.csv(tables$part1, "c:/temp/table1Part1.csv", row.names = FALSE)
+write.csv(tables$part2, "c:/temp/table1Part2.csv", row.names = FALSE)
 print(tables$part1)
 
 

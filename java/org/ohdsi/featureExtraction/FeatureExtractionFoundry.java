@@ -652,8 +652,10 @@ public class FeatureExtractionFoundry {
 		JSONWriter jsonWriter = new JSONWriter(stringWriter);
 		jsonWriter.object();
 
-		sql_A.append("CREATE TABLE `" + outputPath + "/analysisRef` AS\n");
-		sql_C.append("CREATE TABLE `" + outputPath + "/covariateRef` AS\n");
+		if (!semanticsType.equals("workbook"))
+			sql_A.append("CREATE TABLE `" + outputPath + "/analysisRef` AS\n");
+		if (!semanticsType.equals("workbook"))
+			sql_C.append("CREATE TABLE `" + outputPath + "/covariateRef` AS\n");
 
 		while (analysesIterator.hasNext()) {
 			JSONObject analysis = (JSONObject) analysesIterator.next();

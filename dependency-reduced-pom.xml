@@ -4,7 +4,7 @@
   <groupId>org.ohdsi</groupId>
   <artifactId>featureExtraction</artifactId>
   <name>featureExtraction</name>
-  <version>2.2.4-SNAPSHOT</version>
+  <version>3.0.0-SNAPSHOT</version>
   <scm>
     <connection>scm:git:https://github.com/OHDSI/featureExtraction</connection>
     <developerConnection>scm:git:https://github.com/OHDSI/featureExtraction</developerConnection>

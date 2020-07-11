@@ -12,7 +12,7 @@
 FROM global_temp.@cohort_table cohort
 INNER JOIN global_temp.person person
 	ON cohort.subject_id = person.person_id
-{@included_cov_table != ''} ? {WHERE MONTH(cohort_start_date) * 1000 + @analysis_id IN (SELECT id FROM @included_cov_table)}	
+{@included_cov_table != ''} ? {WHERE MONTH(cohort_start_date) * 1000 + @analysis_id IN (SELECT id FROM global_temp.@included_cov_table)}	
 {@cohort_definition_id != -1} ? {
 	{@included_cov_table != ''} ? {		AND} :{WHERE} cohort.cohort_definition_id = @cohort_definition_id
 }

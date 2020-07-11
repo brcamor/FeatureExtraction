@@ -21,8 +21,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}
-		FROM @cohort_table cohort
-		INNER JOIN @domain_table @domain_table
+		FROM global_temp.@cohort_table cohort
+		INNER JOIN global_temp.@domain_table @domain_table
 			ON cohort.subject_id = @domain_table.person_id
 	{@temporal} ? {
 		INNER JOIN #time_period time_period

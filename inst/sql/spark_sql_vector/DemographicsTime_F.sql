@@ -29,9 +29,9 @@
 	{@sub_type == 'inCohort'} ? {
 			datediff(cohort_end_date, cohort_start_date) AS days
 	} 
-		FROM @cohort_table cohort
+		FROM global_temp.@cohort_table cohort
 	{@sub_type != 'inCohort'} ? {
-		INNER JOIN observation_period observation_period
+		INNER JOIN global_temp.observation_period observation_period
 			ON cohort.subject_id = observation_period.person_id
 			AND observation_period_start_date <= cohort_start_date
 			AND observation_period_end_date >= cohort_start_date
@@ -43,7 +43,7 @@
 	),
 	t1 AS (
 		SELECT COUNT(*) AS cnt 
-		FROM @cohort_table
+		FROM global_temp.@cohort_table
 	{@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
 		),
 	t2 AS (

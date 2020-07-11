@@ -46,14 +46,14 @@
 			c.concept_id as concept_id
 		FROM (
 			SELECT concept_id
-			FROM concept
+			FROM global_temp.concept
 			WHERE concept_id IN (316139, 314378, 318773, 321319)
 				AND invalid_reason IS NULL
 			
 			UNION
 			
 			SELECT descendant_concept_id AS concept_id
-			FROM concept_ancestor
+			FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (316139, 314378)
 		) c
 		UNION ALL
@@ -64,12 +64,12 @@
 			i.descendant_concept_id as concept_id
 		FROM (
 			SELECT descendant_concept_id
-			FROM concept_ancestor
+			FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (320128, 442604, 201313)
 			) i
 		LEFT JOIN (
 			SELECT descendant_concept_id
-			FROM concept_ancestor
+			FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (197930)
 			) e
 			ON i.descendant_concept_id = e.descendant_concept_id
@@ -82,12 +82,12 @@
 			i.descendant_concept_id as concept_id
 		FROM (
 			SELECT descendant_concept_id
-			FROM concept_ancestor
+			FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (201820, 442793)
 			) i
 		LEFT JOIN (
 			SELECT descendant_concept_id
-			FROM concept_ancestor
+			FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (195771, 376112, 4174977, 4058243, 193323, 376979)
 			) e
 			ON i.descendant_concept_id = e.descendant_concept_id
@@ -98,7 +98,7 @@
 		SELECT DISTINCT 
 			5 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 		WHERE ancestor_concept_id IN (4043731, 4110192, 375557, 4108356, 373503, 434656, 433505, 376714, 312337)
 		UNION ALL
 
@@ -108,14 +108,14 @@
 			c.concept_id AS concept_id
 		FROM (
 			SELECT concept_id
-			FROM concept
+			FROM global_temp.concept
 			WHERE concept_id IN (312327,43020432,314962,312939,315288,317309,134380,196438,200138,194393,319047,40486130,317003,4313767,321596,317305,321886,314659,321887,437312,134057)
 				AND invalid_reason IS NULL
 			
 			UNION
 			
 			SELECT descendant_concept_id AS concept_id
-			FROM concept_ancestor
+			FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (312327,43020432,314962,312939,315288,317309,134380,196438,200138,194393,319047,40486130,317003,4313767,321596)
 		) c
 
@@ -146,8 +146,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}			
-		FROM @cohort_table cohort
-		INNER JOIN condition_era condition_era
+		FROM global_temp.@cohort_table cohort
+		INNER JOIN global_temp.condition_era condition_era
 			ON cohort.subject_id = condition_era.person_id
 		INNER JOIN chads2vasc_concepts
 			ON condition_era.condition_concept_id = chads2vasc_concepts.concept_id
@@ -172,8 +172,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}	  
-		FROM @cohort_table cohort
-		INNER JOIN person person
+		FROM global_temp.@cohort_table cohort
+		INNER JOIN global_temp.person person
 			ON cohort.subject_id = person.person_id
 	{@cohort_definition_id != -1} ? {	WHERE cohort.cohort_definition_id = @cohort_definition_id}
 
@@ -190,7 +190,7 @@
 
 	t1 AS (
 		SELECT COUNT(*) AS cnt 
-		FROM @cohort_table
+		FROM global_temp.@cohort_table
 	{@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
 		),
 	t2 AS (

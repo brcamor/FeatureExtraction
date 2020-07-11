@@ -11,8 +11,8 @@
 		cohort.@row_id_field AS row_id,
 		1 AS covariate_value 
 	}
-	FROM @cohort_table cohort
-	INNER JOIN person person
+	FROM global_temp.@cohort_table cohort
+	INNER JOIN global_temp.person person
 		ON cohort.subject_id = person.person_id
 	WHERE race_concept_id IN (
 			SELECT concept_id

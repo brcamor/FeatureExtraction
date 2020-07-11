@@ -22,8 +22,8 @@
 			cohort.@row_id_field AS row_id,	
 	}
 			YEAR(cohort_start_date) - year_of_birth AS age
-		FROM @cohort_table cohort
-		INNER JOIN person person
+		FROM global_temp.@cohort_table cohort
+		INNER JOIN global_temp.person person
 			ON cohort.subject_id = person.person_id
 	{@cohort_definition_id != -1} ? {	WHERE cohort.cohort_definition_id = @cohort_definition_id}
 		) raw_data
@@ -33,7 +33,7 @@
 
 	t1 AS (
 		SELECT COUNT(*) AS cnt 
-		FROM @cohort_table
+		FROM global_temp.@cohort_table
 	{@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
 	),
 	t2 AS (

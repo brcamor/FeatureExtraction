@@ -140,7 +140,7 @@
 		SELECT 
 			1 as diag_category_id
 			, descendant_concept_id as concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4329847)
 
 		UNION ALL
@@ -149,7 +149,7 @@
 		SELECT 
 			2 as diag_category_id
 			, descendant_concept_id as concept_id
-		FROM  concept_ancestor	
+		FROM  global_temp.concept_ancestor	
 			WHERE ancestor_concept_id IN (316139)
 
 		UNION ALL
@@ -158,7 +158,7 @@
 		SELECT 
 			3 as diag_category_id,
 			descendant_concept_id as concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (321052)
 		UNION ALL
 
@@ -166,7 +166,7 @@
 		SELECT 
 			4 as diag_category_id,
 			descendant_concept_id as concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (381591, 434056)
 
 		UNION ALL
@@ -175,7 +175,7 @@
 		SELECT
 			5 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4182210)
 		
 		UNION ALL
@@ -184,7 +184,7 @@
 		SELECT  
 			6 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4063381)
 		
 		UNION ALL
@@ -193,7 +193,7 @@
 		SELECT 
 			7 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (257628, 134442, 80800, 80809, 256197, 255348)
 		UNION ALL
 
@@ -201,7 +201,7 @@
 		SELECT 
 			8 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4247120)
 		UNION ALL
 
@@ -209,7 +209,7 @@
 		SELECT 
 			9 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4064161, 4212540)
 		UNION ALL
 
@@ -217,7 +217,7 @@
 		SELECT 
 			10 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (201820)
 		UNION ALL
 
@@ -225,7 +225,7 @@
 		SELECT 
 			11 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4192279, 443767, 442793)
 		UNION ALL
 
@@ -233,7 +233,7 @@
 		SELECT 
 			12 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (192606, 374022)
 		UNION ALL
 
@@ -241,7 +241,7 @@
 		SELECT 
 			13 AS diag_category_id,
 			descendant_concept_id as concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4030518)
 		UNION ALL
 
@@ -249,7 +249,7 @@
 		SELECT 
 			14 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (443392)
 		UNION ALL
 
@@ -257,7 +257,7 @@
 		SELECT 
 			15 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (4245975, 4029488, 192680, 24966)
 		UNION ALL 
 
@@ -265,7 +265,7 @@
 		SELECT 
 			16 AS diag_category_id,
 			descendant_concept_id as concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (432851)
 		UNION ALL 
 
@@ -273,7 +273,7 @@
 		SELECT 
 			17 AS diag_category_id,
 			descendant_concept_id AS concept_id
-		FROM concept_ancestor
+		FROM global_temp.concept_ancestor
 			WHERE ancestor_concept_id IN (439727)
 	)
 
@@ -302,8 +302,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}			
-		FROM @cohort_table cohort
-		INNER JOIN condition_era condition_era
+		FROM global_temp.@cohort_table cohort
+		INNER JOIN global_temp.condition_era condition_era
 			ON cohort.subject_id = condition_era.person_id
 		INNER JOIN charlson_concepts charlson_concepts
 			ON condition_era.condition_concept_id = charlson_concepts.concept_id
@@ -327,7 +327,7 @@
 	), 
 	t1 AS (
 		SELECT COUNT(*) AS cnt 
-		FROM @cohort_table
+		FROM global_temp.@cohort_table
 	{@cohort_definition_id != -1} ? {	WHERE cohort_definition_id = @cohort_definition_id}
 		),
 	t2 AS (

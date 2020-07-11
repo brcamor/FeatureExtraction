@@ -26,8 +26,8 @@
 	} : {
 			cohort.@row_id_field AS row_id
 	}
-		FROM @cohort_table cohort
-		INNER JOIN measurement measurement
+		FROM global_temp.@cohort_table cohort
+		INNER JOIN global_temp.measurement measurement
 			ON cohort.subject_id = measurement.person_id
 	{@temporal} ? {
 		INNER JOIN #time_period time_period

@@ -11,8 +11,8 @@ SELECT
 	cohort.@row_id_field AS row_id,
 	1 AS covariate_value 
 }
-FROM @cohort_table cohort
-INNER JOIN person person
+FROM global_temp.@cohort_table cohort
+INNER JOIN global_temp.person person
 	ON cohort.subject_id = person.person_id
 WHERE gender_concept_id != 0
 {@excluded_concept_table != ''} ? {	AND gender_concept_id NOT IN (SELECT id FROM @excluded_concept_table)}
